@@ -1,0 +1,13 @@
+{% extends 'panel/base.html' %}
+
+{% block back %}{% endblock %}
+
+{% block content %}
+	<p class="p-text">
+		这里是管理页面。
+	</p>
+	<a class="a-text" href="/admin">Django管理后台</a><br>
+	{% if request.user.can_develop %}
+		<h2>开发&运行</h2>
+	{% endif %}
+{% endblock %}

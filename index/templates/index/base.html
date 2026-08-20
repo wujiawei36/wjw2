@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	{% load static %}
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+	<style>
+		header {
+			background-color: #7afdb5;
+			/* padding: 15px; */
+			/* padding-left: 2px; */
+			/* padding-right: 2px; */
+			/* padding-top: 1px; */
+			/* padding-bottom: 1px; */
+			/* border-bottom: 1px solid #e7e7e7; */
+		}
+
+		header h1 {
+			margin: 0;
+			font-size: 24px;
+		}
+
+		header nav ul {
+			list-style: none;
+			padding: 0;
+		}
+
+		header nav ul li {
+			display: inline;
+			margin-right: 15px;
+		}
+
+		header nav ul li a {
+			display: inline;
+			text-decoration: none;
+			color: #007bff;
+		}
+
+		header nav ul li p {
+			display: inline;
+			text-decoration: none;
+			color: #00a199;
+		}
+
+		header nav ul li p a {
+			display: inline;
+			text-decoration: none;
+			color: #00a199;
+		}
+ 
+        header nav ul li.right {
+            margin-left: auto;
+        }
+
+        header nav ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            align-items: center;
+        }
+        footer {
+			/* text-align: center; */
+			padding: 5px;
+			background-color: #7afdb5;
+			color: #000;
+		}
+
+		footer nav ul {
+			list-style: none;
+			padding: 0;
+		}
+
+		footer nav ul li {
+			display: inline;
+			margin-right: 15px;
+		}
+
+		footer nav ul li a {
+			display: inline;
+			text-decoration: none;
+			color: #007bff;
+		}
+
+		.h1-text {
+			color: #000000d0;
+			font-size: 40px;
+			font-weight: 100;
+		}
+
+		.h2-text {
+			color: #000000c0;
+			font-size: 30px;
+			font-weight: 100;
+		}
+
+		.h3-text {
+			color: #000000b0;
+			font-size: 20px;
+			font-weight: 100;
+		}
+
+		.h4-text {
+			color: #000000a0;
+			font-size: 15px;
+			font-weight: 100;
+		}
+
+		.h5-text {
+			color: #000000a0;
+			font-size: 12px;
+			font-weight: 100;
+		}
+
+		.h6-text {
+			color: #000000a0;
+			font-size: 10px;
+			font-weight: 100;
+		}
+
+		.p-text {
+			color: #000000a0;
+			font-size: 20px;
+			font-weight: 100;
+		}
+
+		.a-text {
+			color: #007bff;
+			font-size: 20px;
+			font-weight: 100;
+			text-decoration-line: none;
+		}
+		.a-text:visited {
+			color: #007bff;
+		}
+
+		.li-text {
+			color: #000000a0;
+			font-size: 20px;
+			font-weight: 100;
+			list-style-type: none;
+		}
+
+		.no-br {
+			white-space: nowrap;
+		}
+
+		.hidden {
+			display: none;
+		}
+
+		.username {
+			color: #007bff;
+			font-weight: 900;
+			text-decoration: none;
+		}
+
+		.username:visited {
+			color: #007bff;
+		}
+
+		.yes {
+			color: green;
+			text-align: center;
+		}
+
+		.no {
+			color: red;
+			text-align: center;
+		}
+
+		/*  */
+	</style>
+
+	<link rel="apple-touch-icon" sizes="180x180" href="{% static 'apple-touch-icon.png' %}">
+	<link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon-32x32.png' %}">
+	<link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon-16x16.png' %}">
+	<link rel="icon" type="image/x-icon" href="{% static 'favicon.ico' %}">
+    
+	{% block title %}
+	<title>{{ site_name }}</title>
+	{% endblock %}
+</head>
+
+<body>
+	<header>
+		<nav>
+			<ul>
+				<li>
+					<p><a href="/">{{ site_name }}</a></p>
+				</li>
+				{% if user.is_staff%}
+					<li><a href="/panel">管理页面</a></li>
+				{% endif %}
+				{% if user.is_authenticated %}
+					<li class="right"><a href="/user/logout">登出</a></li>
+					<li>
+						<a href="/user/{{ user.id }}" class="username">
+							{{ user.username }}
+						</a>
+					</li>
+				{% else %}
+					<li class="right"><a href="/user/login">登录</a></li>
+				{% endif %}
+			</ul>
+		</nav>
+	</header>
+	<hr>
+	{% block content %}{% endblock %}
+	<hr>
+	<footer>
+		<nav>
+			<ul>
+				<li class="li-text"><a href="/about" class="a-text">关于</a></li>
+			</ul>
+		</nav>
+	</footer>
+</body>

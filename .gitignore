@@ -1,0 +1,23 @@
+# 环境变量
+.env
+
+# Python
+__pycache__/
+*.pyc
+
+# Django
+db.sqlite3
+staticfiles/
+media/
+
+# IDE
+.vscode/
+
+# 虚拟环境
+wjw2-env/
+
+# Mac
+.DS_Store
+
+README.md
+

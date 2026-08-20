@@ -1,0 +1,30 @@
+{% extends 'index/base.html' %}
+
+{% block title %}
+<title>登录 - {{ site_name }}</title>
+{% endblock %}
+
+{% block content %}
+{% if errors %}
+<p class="p-text">
+	错误:{{ errors }}
+</p>
+{% endif %}
+<form action="" method="post">
+    {% csrf_token %}
+	用户名或用户编号:
+    <input type="text" name="username" required>
+    <br>
+    密码:
+    <input type="password" name="password" required>
+
+    <br>
+    图形验证码:
+	<input type="text" id="captcha" name="captcha" required>
+	<img src="{{ captcha_image_url }}" alt="验证码">
+	<br>
+	<input type="hidden" id="captcha_key" name="captcha_key" value="{{ captcha_key }}" autocomplete="off">
+
+    <input type="submit" value="登录">
+</form>
+{% endblock %}
