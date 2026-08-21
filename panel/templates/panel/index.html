@@ -9,5 +9,6 @@
 	<a class="a-text" href="/admin">Django管理后台</a><br>
 	{% if request.user.can_develop %}
 		<h2>开发&运行</h2>
+		<a class="a-text" href="run_command">运行命令</a><br>
 	{% endif %}
 {% endblock %}
