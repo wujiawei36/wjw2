@@ -13,7 +13,7 @@ from django.utils import timezone
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    list_display = ["id"] + list(UserAdmin.list_display) + ["is_superuser"] + ["password_status"]
+    list_display = ["id"] + list(UserAdmin.list_display) + ["is_superuser"] + ["password_status"] +["can_develop"]
     ordering = ["id"]  # 默认按 id 升序
 
     @admin.display(description="启用密码", ordering="password")

@@ -8,22 +8,26 @@
 	<h1 class="h1-text">
 		运行命令
 	</h1>
-    {% if text %}
-    <p>
-        提示: {{ text }}
-    </p>
-    {% endif %}
     <form method="POST">
         {% csrf_token %}
-        <input type="radio" id="clear_outdated_session" value="clear_outdated_session" name="command-type">
-        <label for="clear_outdated_session">清理过期会话</label>
+        <input type="radio" id="clearsessions" value="clearsessions" name="command-type">
+        <label for="clearsessions">清理过期会话</label>
         <br>
-        <input type="radio" id="clear_captcha" value="clear_captcha" name="command-type" checked>
+        <input type="radio" id="captcha_clean" value="captcha_clean" name="command-type" checked>
         <label for="clear_captcha">清理验证码</label>
         <br>
         <input type="checkbox" id="confirm" required>
         <label for="confirm">我确认执行上述命令</label>
         <br>
-        <input type="submit" value="执行" name="command-type">
+        <input type="submit" value="执行">
     </form>
+    {% if text %}
+    <p class="p-text">
+        提示: {{ text }}
+    </p>
+    {% endif %}
+    {% if output %}
+        <p class="p-text">命令输出：</p>
+        <pre>{{ output }}</pre>
+    {% endif %}
 {% endblock %}
