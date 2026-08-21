@@ -30,7 +30,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 LOCAL_RUNNING = os.getenv('LOCAL_RUNNING')=='True'
 
 DEBUG = True
-ALLOWED_HOSTS = ["localhost","127.0.0.1","marleigh-nonglandulous-saniyah.ngrok-free.dev","wujiawei.sryze.cc"]
+ALLOWED_HOSTS = ["localhost","127.0.0.1","wujiawei36.pythonanywhere.com"]
 if not LOCAL_RUNNING:
     DEBUG = False
     ALLOWED_HOSTS = ["*"]
