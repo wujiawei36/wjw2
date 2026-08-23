@@ -89,78 +89,78 @@ def auth_logout(request):
 		logout(request)
 	return redirect('/')
 
-def auth_register(request):
-	if online(request.user):
-		return redirect(to='/')
-	if request.method == 'POST':
-		if request.POST.get('required'):
-			return redirect(to='/')
-		username = request.POST['username'].strip()
-		password = request.POST['password'].strip()
-		password_check = request.POST['password_check'].strip()
-		email = request.POST['email'].strip()
-		captcha_value = request.POST.get('captcha')
-		captcha_key = request.POST.get('captcha_key')
+# def auth_register(request):
+# 	if online(request.user):
+# 		return redirect(to='/')
+# 	if request.method == 'POST':
+# 		if request.POST.get('required'):
+# 			return redirect(to='/')
+# 		username = request.POST['username'].strip()
+# 		password = request.POST['password'].strip()
+# 		password_check = request.POST['password_check'].strip()
+# 		email = request.POST['email'].strip()
+# 		captcha_value = request.POST.get('captcha')
+# 		captcha_key = request.POST.get('captcha_key')
 
-		if not password==password_check:
-			return render(request, 'registration/register.html', _merge({'errors': '密码不匹配'}, get_captchas()))
+# 		if not password==password_check:
+# 			return render(request, 'registration/register.html', _merge({'errors': '密码不匹配'}, get_captchas()))
 
-		if not username.strip() or not password.strip() or not password_check.strip() or not email.strip():
-			return render(request, 'registration/register.html', _merge({'errors': '输入项不能为空'}, get_captchas()))
+# 		if not username.strip() or not password.strip() or not password_check.strip() or not email.strip():
+# 			return render(request, 'registration/register.html', _merge({'errors': '输入项不能为空'}, get_captchas()))
 
-		try:
-			captcha = CaptchaStore.objects.get(hashkey=captcha_key)
-			if upper(captcha.response) != upper(captcha_value):
-				captcha.delete()
-				return render(request, 'registration/register.html', _merge({'errors': '验证码错误'}, get_captchas()))
-			captcha.delete()
-		except CaptchaStore.DoesNotExist:
-			return render(request, 'registration/register.html', _merge({'errors': '验证码过期或无效'}, get_captchas()))
+# 		try:
+# 			captcha = CaptchaStore.objects.get(hashkey=captcha_key)
+# 			if upper(captcha.response) != upper(captcha_value):
+# 				captcha.delete()
+# 				return render(request, 'registration/register.html', _merge({'errors': '验证码错误'}, get_captchas()))
+# 			captcha.delete()
+# 		except CaptchaStore.DoesNotExist:
+# 			return render(request, 'registration/register.html', _merge({'errors': '验证码过期或无效'}, get_captchas()))
 
-		# 手动校验密码强度
-		try:
-			validate_password(password, user=None)  # user=None 表示暂不检查与用户信息的相似度
-		except ValidationError as e:
-			# 如果密码太弱，会把所有错误信息收集起来
-			error_messages = ' '.join(e.messages)
-			return render(request, 'registration/register.html', _merge({'errors': error_messages}, get_captchas()))
+# 		# 手动校验密码强度
+# 		try:
+# 			validate_password(password, user=None)  # user=None 表示暂不检查与用户信息的相似度
+# 		except ValidationError as e:
+# 			# 如果密码太弱，会把所有错误信息收集起来
+# 			error_messages = ' '.join(e.messages)
+# 			return render(request, 'registration/register.html', _merge({'errors': error_messages}, get_captchas()))
 
-		if User.objects.filter(username=username).exists():
-			return render(request, 'registration/register.html', _merge({'errors': '用户名已被占用'}, get_captchas()))
-		if User.objects.filter(email=email).exists():
-			return render(request, 'registration/register.html', _merge({'errors': '邮箱已被占用'}, get_captchas()))
-		user = User.objects.create_user(username=username,password=password,is_staff=False,is_active=False,is_superuser=False,need_email_active=True)
+# 		if User.objects.filter(username=username).exists():
+# 			return render(request, 'registration/register.html', _merge({'errors': '用户名已被占用'}, get_captchas()))
+# 		if User.objects.filter(email=email).exists():
+# 			return render(request, 'registration/register.html', _merge({'errors': '邮箱已被占用'}, get_captchas()))
+# 		user = User.objects.create_user(username=username,password=password,is_staff=False,is_active=False,is_superuser=False,need_email_active=True)
 
-		# 2. 生成Token
-		token = activation_token.make_token(user)
-		# 3. 生成安全的用户ID
-		uid = urlsafe_base64_encode(force_bytes(user.pk))
-		# 4. 构建完整激活链接[reference:5]
-		activation_link = request.build_absolute_uri(
-			reverse('users:auth_activate', kwargs={'uidb64': uid, 'token': token})
-		)
-		print(activation_link)
-		send_email_async(
-			subject='【wjw2网站】激活你的账户',
-			recipient_list=[email],
-			html_message=f'<a href={activation_link}>单击此处</a>以激活你的账户。<br>如果你没有进行此操作，则可以安全地忽略此邮件。',
-		)
-		return HttpResponse("已发送激活邮件，请检查你的邮箱")
+# 		# 2. 生成Token
+# 		token = activation_token.make_token(user)
+# 		# 3. 生成安全的用户ID
+# 		uid = urlsafe_base64_encode(force_bytes(user.pk))
+# 		# 4. 构建完整激活链接[reference:5]
+# 		activation_link = request.build_absolute_uri(
+# 			reverse('users:auth_activate', kwargs={'uidb64': uid, 'token': token})
+# 		)
+# 		print(activation_link)
+# 		send_email_async(
+# 			subject='【wjw2网站】激活你的账户',
+# 			recipient_list=[email],
+# 			html_message=f'<a href={activation_link}>单击此处</a>以激活你的账户。<br>如果你没有进行此操作，则可以安全地忽略此邮件。',
+# 		)
+# 		return HttpResponse("已发送激活邮件，请检查你的邮箱")
 
-	return render(request, 'registration/register.html', get_captchas())
+# 	return render(request, 'registration/register.html', get_captchas())
 
-def auth_activate(request, uidb64, token):
-	try:
-		uid = force_str(urlsafe_base64_decode(uidb64))
-		user = User.objects.get(pk=uid, is_active=False, need_email_active=True) # 确保是未激活用户[reference:8]
-	except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-		user = None
+# def auth_activate(request, uidb64, token):
+# 	try:
+# 		uid = force_str(urlsafe_base64_decode(uidb64))
+# 		user = User.objects.get(pk=uid, is_active=False, need_email_active=True) # 确保是未激活用户[reference:8]
+# 	except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+# 		user = None
 
-	if user is not None and activation_token.check_token(user, token):
-		user.is_active = True
-		user.need_email_active=False
-		user.save()
-		login(request,user)
-		return redirect(to='/')
-	else:
-		return HttpResponse("激活链接无效或已过期")
+# 	if user is not None and activation_token.check_token(user, token):
+# 		user.is_active = True
+# 		user.need_email_active=False
+# 		user.save()
+# 		login(request,user)
+# 		return redirect(to='/')
+# 	else:
+# 		return HttpResponse("激活链接无效或已过期")

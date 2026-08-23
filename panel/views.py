@@ -1,8 +1,10 @@
 from django.contrib.auth.decorators import permission_required, login_required, user_passes_test
 from django.contrib.admin.views.decorators import staff_member_required
+from django.contrib.sessions.models import Session
 from django.core.management import call_command
-from django.http import HttpResponseForbidden
 from django.shortcuts import render, redirect
+from django.http import HttpResponseForbidden
+from django.contrib.auth import logout
 from functools import wraps
 from io import StringIO
 import sys
@@ -40,10 +42,15 @@ def index(request):
 def run_command(request):
     if request.method=='POST':
         valid_types = ['captcha_clean',
-                       'clearsessions']
+                       'clearsessions',
+                       '_clear_all_session']
         command=request.POST['command-type']
         if command not in valid_types:
             return render(request,'panel/run_command.html',{'text':'run_website_command:执行命令失败，未知的命令'})
+        if command == '_clear_all_session':
+            Session.objects.all().delete()
+            logout(request)
+            return redirect(to='/')
         buffer = StringIO()
         old_stdout = sys.stdout
         old_stderr = sys.stderr
