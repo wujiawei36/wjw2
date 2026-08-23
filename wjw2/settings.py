@@ -155,13 +155,13 @@ AUTH_USER_MODEL = 'users.CustomUser'
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 USE_X_FORWARDED_HOST = True
 
-# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-# EMAIL_HOST = 'smtp.163.com'
-# EMAIL_PORT = 465
-# EMAIL_USE_SSL = True          # 163 用 465 端口必须开 SSL
-# EMAIL_HOST_USER = 'falaya2026@163.com'
-# EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASSWORD')
-# DEFAULT_FROM_EMAIL = 'noreply <falaya2026@163.com>'  # 收件人看到的发件人
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT'))
+EMAIL_USE_SSL = True
+EMAIL_HOST_USER = os.getenv('EMAIL_USER')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASSWORD')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')  # 收件人看到的发件人
 
 # captcha
 CAPTCHA_LENGTH = 4
@@ -183,3 +183,5 @@ SITE_NAME = 'wujiawei的网站'
 LOGIN_URL='/user/login'
 
 STATIC_ROOT=os.path.join(BASE_DIR,'staticfiles')
+
+DEVELOPERS=[os.getenv('DEVELOPER_1')]

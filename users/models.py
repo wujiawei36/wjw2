@@ -4,6 +4,7 @@ from django.db import models
 class CustomUser(AbstractUser):
     # 在这里添加你的自定义字段
     can_develop = models.BooleanField('可开发', default = False)
+    need_email_active = models.BooleanField('等待邮箱激活', default=False)
 
     class Meta:
         verbose_name = "用户"

@@ -1,21 +1,27 @@
 {% extends 'index/base.html' %}
 
 {% block head %}
-<title>登录 - {{ site_name }}</title>
+<title>注册 - {{ site_name }}</title>
 {% endblock %}
 
 {% block content %}
     <h1 class="h1-text">
-        登录
+        注册
     </h1>
-    <form action="" method="post" name="login_form">
+    <form action="" method="post" onsubmit="return validateForm()" name="register_form">
         {% csrf_token %}
         <input type="hidden" name="required">
-        用户名或用户编号:
+        用户名:
         <input type="text" name="username" required>
+        <br>
+        邮箱:
+        <input type="email" name="email" required>
         <br>
         密码:
         <input type="password" name="password" required>
+        <br>
+        再次输入密码: 
+        <input type="password" name="password_check" required>
 
         <br>
         图形验证码:
@@ -23,15 +29,21 @@
         <img src="{{ captcha_image_url }}" alt="验证码">
         <br>
         <input type="hidden" id="captcha_key" name="captcha_key" value="{{ captcha_key }}" autocomplete="off">
-
-        <input type="submit" value="登录">
+        <input type="submit" value="注册">
     </form>
     <script>
         function validateForm()
         {
-            var required=document.forms['login_form']['required'].value;
+            var required=document.forms['register_form']['required'].value;
             if(required&&required!='')
                 return false;
+            var password=document.forms['register_form']['password'].value;
+            var password_check=document.forms['register_form']['password_check'].value;
+            if(password!=password_check)
+            {
+                alert('密码不匹配');
+                return false;
+            }
             return true;
         }
     </script>
