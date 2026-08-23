@@ -181,3 +181,5 @@ CAPTCHA_FOREGROUND_COLOR = '#000000'
 SITE_NAME = 'wujiawei的网站'
 
 LOGIN_URL='/user/login'
+
+STATIC_ROOT=os.path.join(BASE_DIR,'staticfiles')
