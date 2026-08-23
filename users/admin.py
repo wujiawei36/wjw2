@@ -25,12 +25,12 @@ class CustomUserAdmin(UserAdmin):
 
     # 编辑页的字段布局
     fieldsets = UserAdmin.fieldsets + (
-        ('权限', {'fields': ('can_develop',)}),
+        ('权限', {'fields': ('can_develop','need_email_active')}),
     )
 
     # 新增用户时的字段
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ('权限', {'fields': ('can_develop',)}),
+        ('权限', {'fields': ('can_develop','need_email_active')}),
     )
 
 @admin.register(Notification)
