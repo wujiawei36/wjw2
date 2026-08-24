@@ -52,8 +52,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-	# 'index.middleware.IPBlockMiddleware',
-	# 'index.middleware.RequestBlockingMiddleware',
+	'index.middleware.IPBlockMiddleware',
+	'index.middleware.RequestBlockingMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
