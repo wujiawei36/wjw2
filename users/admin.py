@@ -148,6 +148,3 @@ class CustomSessionAdmin(admin.ModelAdmin):
 class Ban_IP_Admin(admin.ModelAdmin):
     list_display = ["ip", "active", "updated_at"]
     ordering = ["updated_at"]  # 默认按时间升序
-    class Meta:
-        verbose_name = '封禁IP'
-        verbose_name_plural = '封禁IP列表'

@@ -29,6 +29,6 @@ class Ban_IP(models.Model):
 	reason = models.TextField('封禁理由:', blank = False)
 	updated_at = models.DateTimeField('封禁发起时间:', auto_now=True)
 	active = models.BooleanField('启用封禁', default = True)
-
-	# def __str__(self):
-    #     return self.ip
+    class Meta:
+        verbose_name = '封禁IP'
+        verbose_name_plural = '封禁IP列表'
