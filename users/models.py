@@ -32,3 +32,12 @@ class Ban_IP(models.Model):
     class Meta:
         verbose_name = '封禁IP'
         verbose_name_plural = '封禁IP列表'
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        from users.middleware import banned_ip_cache
+        banned_ip_cache.clear()
+
+    def delete(self, *args, **kwargs):
+        from users.middleware import banned_ip_cache
+        banned_ip_cache.clear()
+        return super().delete(*args, **kwargs)
