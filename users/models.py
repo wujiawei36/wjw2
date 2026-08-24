@@ -23,3 +23,12 @@ class Notification(models.Model):
     class Meta:
         verbose_name = "用户通知"
         verbose_name_plural = verbose_name
+
+class Ban_IP(models.Model):
+	ip = models.GenericIPAddressField('IP 地址:', blank = False, primary_key = True)
+	reason = models.TextField('封禁理由:', blank = False)
+	updated_at = models.DateTimeField('封禁发起时间:', auto_now=True)
+	active = models.BooleanField('启用封禁', default = True)
+
+	# def __str__(self):
+    #     return self.ip

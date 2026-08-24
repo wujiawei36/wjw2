@@ -1,10 +1,10 @@
 from django.contrib.contenttypes.models import ContentType
+from .models import CustomUser, Notification, Ban_IP
 from django.contrib.sessions.models import Session
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
 from django.utils.safestring import mark_safe
-from .models import CustomUser,Notification
 from django.contrib import admin, messages
 from django.contrib.auth import logout
 from django.shortcuts import redirect
@@ -13,7 +13,7 @@ from django.utils import timezone
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
-    list_display = ["id"] + list(UserAdmin.list_display) + ["is_superuser"] + ["password_status"] + ["can_develop"] + ["is_active"] + ["need_email_active"]
+    list_display = ["id"] + list(UserAdmin.list_display) + ["is_superuser", "password_status", "can_develop", "is_active", "need_email_active"]
     ordering = ["id"]  # 默认按 id 升序
 
     @admin.display(description="启用密码", ordering="password")
@@ -25,12 +25,14 @@ class CustomUserAdmin(UserAdmin):
 
     # 编辑页的字段布局
     fieldsets = UserAdmin.fieldsets + (
-        ('权限', {'fields': ('can_develop','need_email_active')}),
+        ('权限', {'fields': ('can_develop',)}),
+        ('特殊', {'fields': ('need_email_active',)}),
     )
 
     # 新增用户时的字段
     add_fieldsets = UserAdmin.add_fieldsets + (
-        ('权限', {'fields': ('can_develop','need_email_active')}),
+        ('权限', {'fields': ('can_develop',)}),
+        ('特殊', {'fields': ('need_email_active',)}),
     )
 
 @admin.register(Notification)
@@ -142,3 +144,7 @@ class CustomSessionAdmin(admin.ModelAdmin):
     def has_add_permission(self, request): return False
     def has_change_permission(self, request, obj=None): return False
 
+@admin.register(Ban_IP)
+class Ban_IP_Admin(admin.ModelAdmin):
+    list_display = ["ip", "active", "updated_at"]
+    ordering = ["updated_at"]  # 默认按时间升序
