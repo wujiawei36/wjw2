@@ -11,4 +11,23 @@
 		<h2>开发&运行</h2>
 		<a class="a-text" href="run_command">运行命令</a><br>
 	{% endif %}
+	<h2>Django管理后台的管理选项</h2>
+	{% if perms.users.view_ban_ip %}
+		<a class="a-text" href="/admin/users/ban_ip">封禁IP</a><br>
+	{% endif %}
+	{% if perms.users.view_user %}
+		<a class="a-text" href="/admin/users/customuser">用户</a><br>
+	{% endif %}
+	{% if perms.users.view_notification %}
+		<a class="a-text" href="/admin/users/notification">用户通知</a><br>
+	{% endif %}
+	{% if perms.sessions.view_session %}
+		<a class="a-text" href="/admin/sessions/session">会话</a><br>
+	{% endif %}
+	{% if perms.contenttypes.view_contenttype %}
+		<a class="a-text" href="/admin/contenttypes/contenttype">内容类型</a><br>
+	{% endif %}
+	{% if perms.admin.view_logentry %}
+		<a class="a-text" href="/admin/admin/logentry">日志记录</a><br>
+	{% endif %}
 {% endblock %}
