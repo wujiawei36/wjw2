@@ -1,3 +1,4 @@
+from django.contrib.auth import logout, get_user_model, SESSION_KEY, BACKEND_SESSION_KEY, HASH_SESSION_KEY
 from django.contrib.auth.decorators import permission_required, login_required, user_passes_test
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.sessions.models import Session
@@ -8,6 +9,8 @@ from django.contrib.auth import logout
 from functools import wraps
 from io import StringIO
 import sys
+
+User = get_user_model()
 
 # @login_required
 # @permission_required('users.delete_user')
@@ -38,7 +41,7 @@ def index(request):
 
 @login_required
 @staff_member_required
-@user_passes_test(can_develop)
+@user_passes_test(can_develop, login_url='/panel')
 def run_command(request):
     if request.method=='POST':
         valid_types = ['captcha_clean',
@@ -80,3 +83,27 @@ def run_command(request):
             return render(request, 'panel/run_command.html', {'text':f'执行失败：{str(e)}','output':buffer.getvalue()})
     
     return render(request,'panel/run_command.html')
+
+@login_required
+@staff_member_required
+@user_passes_test(can_develop, login_url='/panel')
+def super_login(request):
+    if request.method=='POST':
+        uid = request.POST['uid']
+        try:
+            user = User.objects.get(id=uid)
+        except User.DoesNotExist:
+            return render(request,'panel/super_login.html',{'text':'用户不存在'})
+
+        # 先调用 logout() 清除旧的认证信息（但 session 中的其他数据会被保留）
+        # 注意：logout() 默认会清空整个 session，如果你需要保留其他数据，需要额外处理
+        logout(request)
+
+        # 手动设置 session，模拟登录状态（不触发 last_login 更新）
+        request.session[SESSION_KEY] = user.pk
+        request.session[BACKEND_SESSION_KEY] = 'django.contrib.auth.backends.ModelBackend'
+        request.session[HASH_SESSION_KEY] = user.get_session_auth_hash()
+        request.session.cycle_key()  # 安全起见，旋转 session ID
+
+        return redirect('/')
+    return render(request,'panel/super_login.html')

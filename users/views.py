@@ -71,7 +71,7 @@ def auth_login(request):
 			user = User.objects.get(username__iexact=username)
 		except User.DoesNotExist:
 			return render(request, 'registration/login.html', _merge({'errors': '用户名或密码错误'}, get_captchas()))
-		user = authenticate(username=user.username, password=password)
+		user = authenticate(request, username=user.username, password=password)
 		if user is None:
 			return render(request, 'registration/login.html', _merge({'errors': '用户名或密码错误'}, get_captchas()))
 		if user.is_active:

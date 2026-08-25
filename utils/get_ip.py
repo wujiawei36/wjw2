@@ -26,4 +26,4 @@ def get_ip(request):
 	# 获取直连IP
 	remote_ip = request.META.get('REMOTE_ADDR', '').strip()
 	# 如果是IPv6地址，返回本地回环地址
-	return remote_ip if ':' not in remote_ip else '127.0.0.1'
+	return remote_ip # if ':' not in remote_ip else '127.0.0.1'

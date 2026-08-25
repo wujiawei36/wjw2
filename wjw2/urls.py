@@ -15,6 +15,7 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.views.generic.base import RedirectView
+from django.shortcuts import redirect
 from django.urls import path, include
 from django.contrib import admin
 
@@ -22,7 +23,9 @@ urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url='/static/favicon-32x32.png', permanent=False)),
     path('captcha/', include('captcha.urls')),
     path('admin/', admin.site.urls),
+    # path('hijack/', include('hijack.urls')),  # 处理劫持请求[reference:16]
     path('', include('index.urls')),
     path('user/', include('users.urls')),
     path('panel/', include('panel.urls')),
+    # path('accounts/profile/', lambda request: redirect('/')),
 ]

@@ -10,6 +10,7 @@
 	{% if request.user.can_develop %}
 		<h2>开发&运行</h2>
 		<a class="a-text" href="run_command">运行命令</a><br>
+		<a class="a-text" href="super_login">超级登录</a><br>
 	{% endif %}
 	<h2>Django管理后台的管理选项</h2>
 	{% if perms.users.view_ban_ip %}

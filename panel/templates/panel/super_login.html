@@ -1,0 +1,29 @@
+{% extends 'panel/base.html' %}
+
+{% block head %}
+<title>超级登录 - 管理 - {{ site_name }}</title>
+{% endblock %}
+
+{% block content %}
+	<h1 class="h1-text">
+		超级登录
+	</h1>
+    <p class="p-text">
+        我们更建议使用的方式：<a class="a-text" href="/admin/users/customuser">Here</a>
+    </p>
+    <form method="POST">
+        {% csrf_token %}
+        请输入目标用户编号:
+        <input type="number" name="uid" required>
+        <br>
+        <input type="checkbox" id="confirm" required>
+        <label for="confirm">我确认登录到上述用户</label>
+        <br>
+        <input type="submit" value="登录">
+    </form>
+    {% if text %}
+    <p class="p-text">
+        提示: {{ text }}
+    </p>
+    {% endif %}
+{% endblock %}

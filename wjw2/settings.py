@@ -48,7 +48,10 @@ INSTALLED_APPS = [
     'captcha',
     'users',
     'panel',
-    'index'
+    'index',
+    'hijack',  # 核心功能
+    'hijack.contrib.admin',  # (可选) 在Admin中集成劫持按钮[reference:12]
+    # 'axes'
 ]
 
 MIDDLEWARE = [
@@ -62,6 +65,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'users.middleware.SessionInfoMiddleware',
+    'hijack.middleware.HijackUserMiddleware',  # 处理劫持会话[reference:13]
+    # 'axes.middleware.AxesMiddleware',  # 添加这一行，放在最后
 ]
 
 ROOT_URLCONF = 'wjw2.urls'
@@ -187,3 +192,20 @@ LOGIN_URL='/user/login'
 STATIC_ROOT=os.path.join(BASE_DIR,'staticfiles')
 
 DEVELOPERS=[os.getenv('DEVELOPER_1')]
+
+# AUTHENTICATION_BACKENDS = [
+#     'axes.backends.AxesStandaloneBackend',  # 添加这一行，放在最前面
+#     'django.contrib.auth.backends.ModelBackend',  # 原有的保留
+# ]
+
+# # 使用你自己的 IP 获取函数
+# AXES_CLIENT_IP_CALLABLE = 'utils.get_ip.get_ip'
+
+# # ====== 封锁配置 ======
+# AXES_LOCK_OUT_AT_FAILURE = True          # 达到失败次数后封锁
+# AXES_FAILURE_LIMIT = 5                    # 允许失败 5 次
+# AXES_COOLOFF_TIME = 15                    # 封锁 15 分钟（单位：分钟）
+
+# # 封锁策略：按 IP 封锁（默认）
+# # 也可以改为按用户名封锁，或组合封锁
+# AXES_LOCKOUT_PARAMETERS = ["ip_address"]
