@@ -23,9 +23,9 @@ urlpatterns = [
     path('favicon.ico', RedirectView.as_view(url='/static/favicon-32x32.png', permanent=False)),
     path('captcha/', include('captcha.urls')),
     path('admin/', admin.site.urls),
-    # path('hijack/', include('hijack.urls')),  # 处理劫持请求[reference:16]
+    path('hijack/', include('hijack.urls')),  # 处理劫持请求[reference:16]
     path('', include('index.urls')),
     path('user/', include('users.urls')),
     path('panel/', include('panel.urls')),
-    # path('accounts/profile/', lambda request: redirect('/')),
+    path('accounts/profile/', lambda request: redirect('/')),
 ]
