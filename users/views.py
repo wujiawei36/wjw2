@@ -1,166 +1,97 @@
 from django.contrib.auth import authenticate, login, logout, get_user_model
-from django.utils.http import urlsafe_base64_encode,urlsafe_base64_decode
-from django.contrib.auth.password_validation import validate_password
-from django.core.exceptions import ValidationError
-from utils.email_utils import send_email_async
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.shortcuts import render, redirect
 from captcha.helpers import captcha_image_url
-from django.utils.encoding import force_bytes
-from django.utils.encoding import force_str
-from utils.tokens import activation_token
 from captcha.models import CaptchaStore
-from django.http import HttpResponse
-from django.conf import settings
-from django.urls import reverse
+from utils.get_ip import get_ip
+import logging
 
+logger = logging.getLogger(__name__)
 
 User = get_user_model()
-
-# utils
-
-def online(user):
-	return user.is_authenticated
-
-def _merge(a,b):
-	return {**a,**b}
 
 def get_captchas():
 	new_captcha_key = CaptchaStore.generate_key()
 	captcha_image_url_str = captcha_image_url(new_captcha_key)
-	return {'captcha_image_url':captcha_image_url_str, 'captcha_key':new_captcha_key}
+	return {'captcha_image_url': captcha_image_url_str, 'captcha_key': new_captcha_key}
 
-def upper(s):
-	return s.upper()
+def _resolve_username(raw):
+	"""
+	支持「用户名」或「用户ID」两种登录方式。
+	返回 (真实用户名, 错误信息)；错误信息非空时直接终止登录流程。
+	使用 iexact + first() 避免大小写不同的重名用户触发 MultipleObjectsReturned(500)。
+	"""
+	try:
+		uid = int(raw)
+	except (TypeError, ValueError):
+		pass
+	else:
+		try:
+			user = User.objects.get(id=uid)
+			return user.username, None
+		except User.DoesNotExist:
+			return None, '用户名或密码错误'
 
-
-# views
+	user = User.objects.filter(username__iexact=raw).order_by('id').first()
+	if user is None:
+		# 用户不存在时返回原始输入，交由 authenticate 统一产出「用户名或密码错误」
+		return raw, None
+	return user.username, None
 
 def auth_login(request):
-	nxt = request.GET.get('next', None)
-	if online(request.user):
-		if nxt is None:
-			return redirect(to='/')
-		else:
+	nxt = request.GET.get('next')
+	if request.user.is_authenticated:
+		if nxt and _is_safe_next(nxt, request):
 			return redirect(nxt)
-	if request.method == 'POST':
-		username = request.POST['username']
-		password = request.POST['password']
-		captcha_value = request.POST.get('captcha')
-		captcha_key = request.POST.get('captcha_key')
+		return redirect('/')
 
-		try:
-			username = int(username)
-		except:
-			1+1
-		else:
-			try:
-				username = User.objects.get(id=int(username))
-			except User.DoesNotExist:
-				return render(request, 'registration/login.html', _merge({'errors': '用户名或密码错误'}, get_captchas()))
-			username = username.username
+	if request.method == 'POST':
+		username = request.POST.get('username', '').strip()
+		password = request.POST.get('password', '')
+		captcha_value = request.POST.get('captcha', '')
+		captcha_key = request.POST.get('captcha_key', '')
+
+		# 验证码校验（先校验验证码，再进行任何用户查询，避免被用于探测）
 		try:
 			captcha = CaptchaStore.objects.get(hashkey=captcha_key)
-			if upper(captcha.response) != upper(captcha_value):
+			if captcha.response.upper() != captcha_value.upper():
 				captcha.delete()
-				return render(request, 'registration/login.html', _merge({'errors': '验证码错误'}, get_captchas()))
+				return render(request, 'registration/login.html', {**get_captchas(), 'errors': '验证码错误'})
 			captcha.delete()
 		except CaptchaStore.DoesNotExist:
-			return render(request, 'registration/login.html', _merge({'errors': '验证码过期或无效'}, get_captchas()))
+			return render(request, 'registration/login.html', {**get_captchas(), 'errors': '验证码过期或无效'})
 
-		try:
-			user = User.objects.get(username__iexact=username)
-		except User.DoesNotExist:
-			return render(request, 'registration/login.html', _merge({'errors': '用户名或密码错误'}, get_captchas()))
-		user = authenticate(request, username=user.username, password=password)
+		# 用户名或用户ID解析
+		username, err = _resolve_username(username)
+		if err:
+			return render(request, 'registration/login.html', {**get_captchas(), 'errors': err})
+
+		# 交由 Django 认证后端完成验证（含 axes 失败计数）
+		user = authenticate(request, username=username, password=password)
 		if user is None:
-			return render(request, 'registration/login.html', _merge({'errors': '用户名或密码错误'}, get_captchas()))
+			logger.warning('LOGIN_FAILED 用户名[%s] 来自IP[%s] 认证失败', username, get_ip(request))
+			return render(request, 'registration/login.html', {**get_captchas(), 'errors': '用户名或密码错误'})
 		if user.is_active:
-			login(request,user)
-			if nxt is None:
-				return redirect('/')
-			else:
+			login(request, user)
+			logger.info('LOGIN_OK 用户[%s](id=%s) 来自IP[%s] 登录成功', user.username, user.id, get_ip(request))
+			if nxt and _is_safe_next(nxt, request):
 				return redirect(nxt)
-		return render(request, 'registration/login.html', _merge({'errors': '账号已被禁用'}, get_captchas()))
+			return redirect('/')
+		logger.warning('LOGIN_BLOCKED 用户[%s](id=%s) 账号已被禁用', user.username, user.id)
+		return render(request, 'registration/login.html', {**get_captchas(), 'errors': '账号已被禁用'})
 
 	return render(request, 'registration/login.html', get_captchas())
 
+def _is_safe_next(url, request):
+	"""防开放重定向：仅允许站内相对路径或同源地址"""
+	return url_has_allowed_host_and_scheme(
+		url,
+		allowed_hosts={request.get_host()},
+		require_https=request.is_secure(),
+	)
+
 def auth_logout(request):
-	if online(request.user):
+	if request.user.is_authenticated:
+		logger.info('LOGOUT 用户[%s](id=%s) 来自IP[%s] 退出登录', request.user.username, request.user.id, get_ip(request))
 		logout(request)
 	return redirect('/')
-
-# def auth_register(request):
-# 	if online(request.user):
-# 		return redirect(to='/')
-# 	if request.method == 'POST':
-# 		if request.POST.get('required'):
-# 			return redirect(to='/')
-# 		username = request.POST['username'].strip()
-# 		password = request.POST['password'].strip()
-# 		password_check = request.POST['password_check'].strip()
-# 		email = request.POST['email'].strip()
-# 		captcha_value = request.POST.get('captcha')
-# 		captcha_key = request.POST.get('captcha_key')
-
-# 		if not password==password_check:
-# 			return render(request, 'registration/register.html', _merge({'errors': '密码不匹配'}, get_captchas()))
-
-# 		if not username.strip() or not password.strip() or not password_check.strip() or not email.strip():
-# 			return render(request, 'registration/register.html', _merge({'errors': '输入项不能为空'}, get_captchas()))
-
-# 		try:
-# 			captcha = CaptchaStore.objects.get(hashkey=captcha_key)
-# 			if upper(captcha.response) != upper(captcha_value):
-# 				captcha.delete()
-# 				return render(request, 'registration/register.html', _merge({'errors': '验证码错误'}, get_captchas()))
-# 			captcha.delete()
-# 		except CaptchaStore.DoesNotExist:
-# 			return render(request, 'registration/register.html', _merge({'errors': '验证码过期或无效'}, get_captchas()))
-
-# 		# 手动校验密码强度
-# 		try:
-# 			validate_password(password, user=None)  # user=None 表示暂不检查与用户信息的相似度
-# 		except ValidationError as e:
-# 			# 如果密码太弱，会把所有错误信息收集起来
-# 			error_messages = ' '.join(e.messages)
-# 			return render(request, 'registration/register.html', _merge({'errors': error_messages}, get_captchas()))
-
-# 		if User.objects.filter(username=username).exists():
-# 			return render(request, 'registration/register.html', _merge({'errors': '用户名已被占用'}, get_captchas()))
-# 		if User.objects.filter(email=email).exists():
-# 			return render(request, 'registration/register.html', _merge({'errors': '邮箱已被占用'}, get_captchas()))
-# 		user = User.objects.create_user(username=username,password=password,is_staff=False,is_active=False,is_superuser=False,need_email_active=True)
-
-# 		# 2. 生成Token
-# 		token = activation_token.make_token(user)
-# 		# 3. 生成安全的用户ID
-# 		uid = urlsafe_base64_encode(force_bytes(user.pk))
-# 		# 4. 构建完整激活链接[reference:5]
-# 		activation_link = request.build_absolute_uri(
-# 			reverse('users:auth_activate', kwargs={'uidb64': uid, 'token': token})
-# 		)
-# 		print(activation_link)
-# 		send_email_async(
-# 			subject='【wjw2网站】激活你的账户',
-# 			recipient_list=[email],
-# 			html_message=f'<a href={activation_link}>单击此处</a>以激活你的账户。<br>如果你没有进行此操作，则可以安全地忽略此邮件。',
-# 		)
-# 		return HttpResponse("已发送激活邮件，请检查你的邮箱")
-
-# 	return render(request, 'registration/register.html', get_captchas())
-
-# def auth_activate(request, uidb64, token):
-# 	try:
-# 		uid = force_str(urlsafe_base64_decode(uidb64))
-# 		user = User.objects.get(pk=uid, is_active=False, need_email_active=True) # 确保是未激活用户[reference:8]
-# 	except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-# 		user = None
-
-# 	if user is not None and activation_token.check_token(user, token):
-# 		user.is_active = True
-# 		user.need_email_active=False
-# 		user.save()
-# 		login(request,user)
-# 		return redirect(to='/')
-# 	else:
-# 		return HttpResponse("激活链接无效或已过期")

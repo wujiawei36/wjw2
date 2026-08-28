@@ -1,10 +1,14 @@
 from django.http import HttpResponseForbidden, HttpResponse
 from django.utils.deprecation import MiddlewareMixin
+from django.utils import timezone
+from datetime import timedelta
 from utils.get_ip import get_ip
 from .models import Ban_IP
 import threading
 import logging
 import time
+
+logger = logging.getLogger(__name__)
 
 
 class SessionInfoMiddleware:
@@ -13,21 +17,26 @@ class SessionInfoMiddleware:
 
     def __call__(self, request):
         if request.user.is_authenticated:
-            request.session['ip_address'] = get_ip(request)
-            request.session['user_agent'] = request.META.get('HTTP_USER_AGENT', '')
+            ip = get_ip(request)
+            ua = request.META.get('HTTP_USER_AGENT', '')
+            # 仅在发生变化时才写入 session，避免每次请求都触发数据库写入
+            if request.session.get('ip_address') != ip or request.session.get('user_agent') != ua:
+                request.session['ip_address'] = ip
+                request.session['user_agent'] = ua
         return self.get_response(request)
 
 # logger = logging.getLogger('django')
 
 # ===================== 配置项 =====================
-# 请求限制配置
-REQUEST_BLOCKING_MIDDLEWARE__BAN_MAX_REQUEST_PER_SECOND = 10  # 封禁IP判定阈值：10次/秒
-REQUEST_BLOCKING_MIDDLEWARE__BLOCK_MAX_REQUEST_PER_SECOND = 5  # 限流阈值：5次/秒
+# 请求限制配置（统计窗口：10 秒）
+REQUEST_BLOCKING_MIDDLEWARE__TIME = 10  # 统计窗口时间（秒）
+REQUEST_BLOCKING_MIDDLEWARE__BAN_MAX_REQUEST_PER_WINDOW = 60  # 封禁IP判定阈值：60次/窗口
+REQUEST_BLOCKING_MIDDLEWARE__BLOCK_MAX_REQUEST_PER_WINDOW = 30  # 限流阈值：30次/窗口
 REQUEST_BLOCKING_MIDDLEWARE__BLOCK_TIME = 60  # 限流持续时间（秒）
-REQUEST_BLOCKING_MIDDLEWARE__TIME = 1  # 统计窗口时间（秒）
+REQUEST_BLOCKING_MIDDLEWARE__BAN_TIME = timedelta(hours=24)  # 自动封禁时长：24小时
 
 # 白名单IP配置
-WHITE_LIST_IPS = ['127.0.0.1', 'localhost']
+WHITE_LIST_IPS = ['127.0.0.1', '::1', 'localhost']
 # ==================================================
 
 # 全局数据结构
@@ -41,7 +50,11 @@ def init_banned_ip_cache():
 	将数据库中的封禁IP加载到内存缓存中，提高查询效率
 	"""
 	global banned_ip_cache
-	banned_ip_cache = set(Ban_IP.objects.values_list('ip', flat=True))
+	try:
+		banned_ip_cache = set(Ban_IP.objects.filter(active=True).values_list('ip', flat=True))
+	except Exception:
+		# 数据库尚未初始化（如未执行 migrate）时跳过，不影响启动
+		banned_ip_cache = set()
 
 def clean_all_expired_records():
 	"""
@@ -101,12 +114,18 @@ class IPBlockMiddleware(MiddlewareMixin):
 		# 检查数据库中的封禁记录
 		try:
 			banned_ip = Ban_IP.objects.get(ip=ip)
-			# 如果封禁记录存在但未激活，则放行
-			if hasattr(banned_ip, 'active') and not banned_ip.active:
+			# 封禁已过期：自动解除并清理记录
+			if banned_ip.expires_at and banned_ip.expires_at <= timezone.now():
+				banned_ip.delete()
+				return None
+			# 封禁记录存在但未激活，则放行
+			if not banned_ip.active:
 				return None
 			
 			# 添加到缓存，加快后续相同IP的拦截速度
 			banned_ip_cache.add(ip)
+
+			logger.warning('IP_BLOCKED IP[%s] 被封禁记录拦截, 理由: %s', ip, banned_ip.reason)
 			
 			# 返回封禁响应
 			return HttpResponseForbidden(
@@ -151,11 +170,6 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 		
 		# 白名单IP直接放行
 		if not ip or ip in WHITE_LIST_IPS:
-			return None
-
-		# 后门放行
-		wjw_label = request.META.get('HTTP_WJW_LABEL','No')
-		if wjw_label != 'No':
 			return None
 
 		# ==================== 爬虫检测 ====================
@@ -213,29 +227,32 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 			current_count = len(current_records)
 			ip_access_records[ip] = current_records
 
-		# 检查是否达到封禁阈值（10次/秒）
-		if current_count >= REQUEST_BLOCKING_MIDDLEWARE__BAN_MAX_REQUEST_PER_SECOND:
-			# 创建封禁记录
-			Ban_IP.objects.get_or_create(
+		# 检查是否达到封禁阈值（60次/窗口）
+		if current_count >= REQUEST_BLOCKING_MIDDLEWARE__BAN_MAX_REQUEST_PER_WINDOW:
+			# 创建/更新封禁记录（自动封禁默认24小时，过期自动解除）
+			Ban_IP.objects.update_or_create(
 				ip=ip,
 				defaults={
 					'reason': f"高频请求超限({current_count}次/{REQUEST_BLOCKING_MIDDLEWARE__TIME}秒)",
-					'updated_at': time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(now)),
-					'active': True
+					'active': True,
+					'expires_at': timezone.now() + REQUEST_BLOCKING_MIDDLEWARE__BAN_TIME,
 				}
 			)
 			
 			# 添加到缓存，立即生效
 			banned_ip_cache.add(ip)
+
+			logger.warning('AUTO_BAN IP[%s] 因高频请求(%d次/%ds)被自动封禁24小时, UA=[%s]',
+			               ip, current_count, REQUEST_BLOCKING_MIDDLEWARE__TIME, user_agent)
 			
 			# 返回封禁响应
 			return HttpResponseForbidden(
-				f"您的IP ({ip}) 因高频访问已被永久封禁！",
+				f"您的IP ({ip}) 因高频访问已被临时封禁，请稍后再试！",
 				content_type='text/plain; charset=utf-8'
 			)
 
-		# 检查是否达到限流阈值（5次/秒）
-		elif current_count >= REQUEST_BLOCKING_MIDDLEWARE__BLOCK_MAX_REQUEST_PER_SECOND:
+		# 检查是否达到限流阈值（30次/窗口）
+		elif current_count >= REQUEST_BLOCKING_MIDDLEWARE__BLOCK_MAX_REQUEST_PER_WINDOW:
 			# 返回限流响应，使用标准HTTP状态码429
 			return HttpResponse(
 				f"访问频率过高，触发限流保护！请{REQUEST_BLOCKING_MIDDLEWARE__BLOCK_TIME}秒后重试",

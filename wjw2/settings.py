@@ -23,17 +23,25 @@ load_dotenv()
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+
+LOCAL_RUNNING = os.getenv('LOCAL_RUNNING') == 'True'
+
 SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY and LOCAL_RUNNING:
+    # 仅本地开发兜底；生产环境未设置 SECRET_KEY 时 Django 会拒绝启动
+    SECRET_KEY = 'django-insecure-dev-only-key-do-not-use-in-prod'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-LOCAL_RUNNING = os.getenv('LOCAL_RUNNING')=='True'
-
-DEBUG = True
-ALLOWED_HOSTS = ["localhost","127.0.0.1","wujiawei36.pythonanywhere.com"]
+DEBUG = os.getenv('DEBUG') == 'True'
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", "wujiawei36.pythonanywhere.com"]
 if not LOCAL_RUNNING:
     DEBUG = False
-    ALLOWED_HOSTS = ["*"]
+    ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'wujiawei36.pythonanywhere.com').split(',')
+
+# 是否位于可信反向代理之后（详见 utils/get_ip.py）。直连部署必须保持 False，
+# 否则攻击者可伪造 X-Real-IP / X-Forwarded-For 绕过限流或诬陷他人IP。
+TRUST_PROXY = os.getenv('TRUST_PROXY') == 'True'
 
 
 # Application definition
@@ -51,12 +59,12 @@ INSTALLED_APPS = [
     'index',
     'hijack',  # 核心功能
     'hijack.contrib.admin',  # (可选) 在Admin中集成劫持按钮[reference:12]
-    # 'axes'
+    'axes',  # 登录防爆破（登录失败锁定）
 ]
 
 MIDDLEWARE = [
-	'users.middleware.IPBlockMiddleware',
-	'users.middleware.RequestBlockingMiddleware',
+    'users.middleware.IPBlockMiddleware',
+    'users.middleware.RequestBlockingMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -66,8 +74,29 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'users.middleware.SessionInfoMiddleware',
     'hijack.middleware.HijackUserMiddleware',  # 处理劫持会话[reference:13]
-    # 'axes.middleware.AxesMiddleware',  # 添加这一行，放在最后
+    'axes.middleware.AxesMiddleware',  # 登录防爆破，放在最后
 ]
+
+if not LOCAL_RUNNING:
+    # ==================== 生产环境加固（PythonAnywhere 免费版） ====================
+    # *.pythonanywhere.com 免费自动支持 HTTPS
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000  # 1年；若遇重定向循环可先调小或关闭
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_REFERRER_POLICY = 'same-origin'
+
+    # 静态文件交给 whitenoise 托管（放在 SecurityMiddleware 之后），
+    # PythonAnywhere 上无需再单独配置静态文件服务
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index('django.middleware.security.SecurityMiddleware') + 1,
+        'whitenoise.middleware.WhiteNoiseMiddleware',
+    )
+    STORAGES = {
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage'},
+    }
 
 ROOT_URLCONF = 'wjw2.urls'
 
@@ -164,7 +193,7 @@ USE_X_FORWARDED_HOST = True
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT'))
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '465'))
 EMAIL_USE_SSL = True
 EMAIL_HOST_USER = os.getenv('EMAIL_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASSWORD')
@@ -192,20 +221,72 @@ LOGIN_URL='/user/login'
 STATIC_ROOT=os.path.join(BASE_DIR,'staticfiles')
 
 DEVELOPERS=[os.getenv('DEVELOPER_1')]
+# 过滤未配置的环境变量，避免 [None] 传入邮件收件人导致崩溃
+DEVELOPERS = [d for d in DEVELOPERS if d]
 
-# AUTHENTICATION_BACKENDS = [
-#     'axes.backends.AxesStandaloneBackend',  # 添加这一行，放在最前面
-#     'django.contrib.auth.backends.ModelBackend',  # 原有的保留
-# ]
+# ====== django-axes 登录防爆破配置 ======
+AUTHENTICATION_BACKENDS = [
+    'axes.backends.AxesStandaloneBackend',  # 只记录登录失败次数，不参与实际认证
+    'django.contrib.auth.backends.ModelBackend',  # 原有的保留
+]
 
-# # 使用你自己的 IP 获取函数
-# AXES_CLIENT_IP_CALLABLE = 'utils.get_ip.get_ip'
+# 使用你自己的 IP 获取函数（与 utils/get_ip.py 一致，未信任代理时即为 REMOTE_ADDR）
+AXES_CLIENT_IP_CALLABLE = 'utils.get_ip.get_ip'
 
-# # ====== 封锁配置 ======
-# AXES_LOCK_OUT_AT_FAILURE = True          # 达到失败次数后封锁
-# AXES_FAILURE_LIMIT = 5                    # 允许失败 5 次
-# AXES_COOLOFF_TIME = 15                    # 封锁 15 分钟（单位：分钟）
+AXES_LOCK_OUT_AT_FAILURE = True          # 达到失败次数后封锁
+AXES_FAILURE_LIMIT = 5                    # 允许失败 5 次
+AXES_COOLOFF_TIME = 15                    # 封锁 15 分钟（单位：分钟）
 
-# # 封锁策略：按 IP 封锁（默认）
-# # 也可以改为按用户名封锁，或组合封锁
-# AXES_LOCKOUT_PARAMETERS = ["ip_address"]
+# 封锁策略：按「IP + 用户名」组合封锁。
+# axes 8.x 中：列表内是 str 表示单独维度（OR），是 (tuple) 表示组合维度（AND）。
+# 用 [("ip_address","username")] 保证同一 IP 下不同用户互不影响。
+AXES_LOCKOUT_PARAMETERS = [("ip_address", "username")]
+
+# 管理后台登录同样受保护
+AXES_ONLY_ADMIN_SITE = False
+
+# ==================== 日志：每天一个文件，保留7天 ====================
+LOG_DIR = BASE_DIR / 'logs'
+os.makedirs(LOG_DIR, exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name} {process:d}/{thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '[{asctime}] {levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'file': {
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': str(LOG_DIR / 'django.log'),
+            'when': 'midnight',   # 每天零点轮转出新文件
+            'interval': 1,
+            'backupCount': 7,     # 只保留最近 7 个文件（含当前），更早的自动删除
+            'encoding': 'utf-8',
+            'formatter': 'verbose',
+        },
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+    },
+    'root': {
+        'handlers': ['file', 'console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        # 请求/安全相关错误：只写文件，避免刷屏控制台
+        'django.request': {'handlers': ['file'], 'level': 'WARNING', 'propagate': False},
+        'django.security': {'handlers': ['file'], 'level': 'WARNING', 'propagate': False},
+        # 业务应用日志
+        'users': {'handlers': ['file'], 'level': 'INFO', 'propagate': False},
+        'panel': {'handlers': ['file'], 'level': 'INFO', 'propagate': False},
+    },
+}

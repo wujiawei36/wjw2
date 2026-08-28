@@ -10,6 +10,12 @@ db.sqlite3
 staticfiles/
 media/
 
+# 运行日志（轮转日志目录）
+logs/
+
+# WorkBuddy 项目数据（内部工作记录，不上仓库）
+.workbuddy/
+
 # IDE
 .vscode/
 

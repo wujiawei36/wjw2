@@ -9,10 +9,12 @@ from django.contrib import admin, messages
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.utils import timezone
+from hijack.contrib.admin import HijackUserAdminMixin
 
 
 @admin.register(CustomUser)
-class CustomUserAdmin(UserAdmin):
+class CustomUserAdmin(HijackUserAdminMixin, UserAdmin):
+    # 注意：HijackUserAdminMixin 会自动在列表末尾注入劫持按钮列，无需手动声明
     list_display = ["id"] + list(UserAdmin.list_display) + ["is_superuser", "password_status", "can_develop", "is_active", "need_email_active"]
     ordering = ["id"]  # 默认按 id 升序
 
@@ -69,6 +71,18 @@ class LogEntryAdmin(admin.ModelAdmin):
     # 禁用添加按钮（日志是自动生成的，不允许手动新建）
     def has_add_permission(self, request):
         return False
+
+    # 禁用删除：防止管理员删除操作日志（含列表页批量删除与详情页删除按钮）。
+    # 需要恢复时删掉这个方法即可。
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    # 禁用修改：日志只能查看，任何编辑一律拒绝（编辑页亦只读）
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return True
 
     # 所有字段设为只读，不允许修改任何历史记录
     readonly_fields = [
@@ -146,5 +160,7 @@ class CustomSessionAdmin(admin.ModelAdmin):
 
 @admin.register(Ban_IP)
 class Ban_IP_Admin(admin.ModelAdmin):
-    list_display = ["ip", "active", "updated_at"]
+    list_display = ["ip", "active", "expires_at", "updated_at"]
     ordering = ["updated_at"]  # 默认按时间升序
+    list_filter = ["active", "updated_at"]
+    search_fields = ["ip"]
