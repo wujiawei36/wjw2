@@ -1,5 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
-from .models import CustomUser, Notification, Ban_IP, InviteCode, generate_invite_code
+from .models import CustomUser, Notification, Ban_IP, InviteCode, generate_invite_code, create_invite_code
 from django.contrib.sessions.models import Session
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth.admin import UserAdmin
@@ -181,9 +181,13 @@ class InviteCodeAdmin(admin.ModelAdmin):
         return obj.status_text
 
     def save_model(self, request, obj, form, change):
-        # 新建时自动生成邀请码、默认创建者为当前管理员
+        # 新建时自动生成邀请码（循环防碰撞）、默认创建者为当前管理员
         if not obj.code:
-            obj.code = generate_invite_code()
+            for _ in range(5):
+                candidate = generate_invite_code()
+                if not InviteCode.objects.filter(code=candidate).exists():
+                    obj.code = candidate
+                    break
         if not obj.created_by_id:
             obj.created_by = request.user
         super().save_model(request, obj, form, change)
@@ -199,11 +203,7 @@ class InviteCodeAdmin(admin.ModelAdmin):
     def _bulk_create_codes(self, request, days):
         count = 0
         for _ in range(3):
-            InviteCode.objects.create(
-                code=generate_invite_code(),
-                created_by=request.user,
-                expires_at=timezone.now() + timedelta(days=days),
-            )
+            create_invite_code(request.user, timezone.now() + timedelta(days=days))
             count += 1
         messages.success(request, f'已生成 {count} 个有效期 {days} 天的邀请码')
 

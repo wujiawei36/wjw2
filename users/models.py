@@ -9,6 +9,18 @@ def generate_invite_code(length=8):
     alphabet = alphabet.replace('O', '').replace('0', '').replace('I', '').replace('L', '').replace('1', '')
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
+
+def create_invite_code(created_by, expires_at, max_attempts=5):
+    """创建唯一邀请码：随机碰撞（概率极低）时自动重试，避免唯一约束报错导致 500。"""
+    from django.db import IntegrityError
+    for _ in range(max_attempts):
+        code = generate_invite_code()
+        try:
+            return InviteCode.objects.create(code=code, created_by=created_by, expires_at=expires_at)
+        except IntegrityError:
+            continue
+    raise RuntimeError('连续多次生成邀请码均与已有邀请码冲突，请重试')
+
 class CustomUser(AbstractUser):
     # 在这里添加你的自定义字段
     can_develop = models.BooleanField('可开发', default = False)

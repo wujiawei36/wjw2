@@ -6,7 +6,7 @@ from django.core.management import call_command
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from datetime import timedelta
-from users.models import InviteCode, generate_invite_code
+from users.models import InviteCode, create_invite_code
 from io import StringIO
 import sys
 import logging
@@ -81,12 +81,7 @@ def invite_codes(request):
         expires_at = timezone.now() + timedelta(days=days)
         codes = []
         for _ in range(count):
-            ic = InviteCode.objects.create(
-                code=generate_invite_code(),
-                created_by=request.user,
-                expires_at=expires_at,
-            )
-            codes.append(ic)
+            codes.append(create_invite_code(request.user, expires_at))
 
         logger.info('INVITE_CODES_GENERATED 用户[%s](id=%s) 生成 %d 个邀请码(有效期 %d 天)',
                     request.user.username, request.user.id, count, days)
