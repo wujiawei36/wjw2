@@ -11,9 +11,18 @@ class LoggingContextMiddleware:
 
     def __init__(self, get_response):
         self.get_response = get_response
+        self.logger = logging.getLogger(__name__)
 
     def __call__(self, request):
         _thread_local.request = request
+        # 临时取证：打印代理头原始值（定位真实IP来源后删除）
+        self.logger.info(
+            'META_DEBUG REMOTE_ADDR=%r X-Real-IP=%r XFF=%r X-Forwarded-Proto=%r',
+            request.META.get('REMOTE_ADDR', ''),
+            request.META.get('HTTP_X_REAL_IP', ''),
+            request.META.get('HTTP_X_FORWARDED_FOR', ''),
+            request.META.get('HTTP_X_FORWARDED_PROTO', ''),
+        )
         try:
             return self.get_response(request)
         finally:

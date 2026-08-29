@@ -1,8 +1,5 @@
 from django.conf import settings
 import ipaddress
-import logging
-
-logger = logging.getLogger(__name__)
 
 
 def _is_private(ip_str):
@@ -40,7 +37,6 @@ def get_ip(request):
     # 1) nginx 场景：X-Real-IP 优先（取公网地址）
     real_ip = request.META.get('HTTP_X_REAL_IP', '').strip()
     if real_ip and not _is_private(real_ip):
-        logger.info('GET_IP_DEBUG 命中X-Real-IP REMOTE_ADDR=%r X-Real-IP=%r -> %s', remote_addr, real_ip, real_ip)
         return real_ip
 
     # 2) X-Forwarded-For：从右往左取第一个公网地址
@@ -50,11 +46,7 @@ def get_ip(request):
         ips = [ip.strip() for ip in x_forwarded_for.split(',') if ip.strip()]
         for ip in reversed(ips):
             if not _is_private(ip):
-                logger.info('GET_IP_DEBUG 命中XFF REMOTE_ADDR=%r XFF=%r -> %s', remote_addr, x_forwarded_for, ip)
                 return ip
 
     # 3) 兜底：直连地址
-    logger.info('GET_IP_DEBUG 兜底REMOTE_ADDR REMOTE_ADDR=%r X-Real-IP=%r XFF=%r -> %s',
-                remote_addr, request.META.get('HTTP_X_REAL_IP', '').strip(),
-                request.META.get('HTTP_X_FORWARDED_FOR', '').strip(), remote_addr)
     return remote_addr
