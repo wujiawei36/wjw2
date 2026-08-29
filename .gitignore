@@ -10,6 +10,9 @@ db.sqlite3
 staticfiles/
 media/
 
+# 数据库备份（含用户数据，绝不上仓库）
+backups/
+
 # 运行日志（轮转日志目录）
 logs/
 
