@@ -164,3 +164,51 @@ class Ban_IP_Admin(admin.ModelAdmin):
     ordering = ["updated_at"]  # 默认按时间升序
     list_filter = ["active", "updated_at"]
     search_fields = ["ip"]
+
+# ==================== django-axes 记录（只读） ====================
+# 三个页面：Access attempts(失败聚合) / Access failures(失败流水) / Access logs(成功登录)
+# 全部只读：不能增删改，防止攻击者删除攻击痕迹
+
+from axes.models import AccessAttempt, AccessFailureLog, AccessLog
+
+
+class ReadOnlyAxesAdmin(admin.ModelAdmin):
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def has_view_permission(self, request, obj=None):
+        return True
+
+
+@admin.register(AccessAttempt)
+class AccessAttemptAdmin(ReadOnlyAxesAdmin):
+    list_display = ["username", "ip_address", "failures_since_start", "locked_out", "attempt_time"]
+    list_filter = ["attempt_time"]
+    search_fields = ["username", "ip_address"]
+    # post_data/get_data 含登录提交的明文密码，不在后台展示，防止泄露
+    exclude = ("get_data", "post_data")
+
+    @admin.display(description="已达锁定阈值", boolean=True)
+    def locked_out(self, obj):
+        from django.conf import settings as dj_settings
+        return obj.failures_since_start >= dj_settings.AXES_FAILURE_LIMIT
+
+
+@admin.register(AccessFailureLog)
+class AccessFailureLogAdmin(ReadOnlyAxesAdmin):
+    list_display = ["username", "ip_address", "locked_out", "attempt_time"]
+    list_filter = ["attempt_time"]
+    search_fields = ["username", "ip_address"]
+
+
+@admin.register(AccessLog)
+class AccessLogAdmin(ReadOnlyAxesAdmin):
+    list_display = ["username", "ip_address", "attempt_time", "logout_time"]
+    list_filter = ["attempt_time"]
+    search_fields = ["username", "ip_address"]

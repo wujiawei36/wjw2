@@ -245,6 +245,10 @@ AXES_LOCKOUT_PARAMETERS = [("ip_address", "username")]
 # 管理后台登录同样受保护
 AXES_ONLY_ADMIN_SITE = False
 
+# 关闭 axes 自带的后台注册（其默认 admin 可删除记录），
+# 改由 users/admin.py 注册只读版本（仅查看，无增删改）
+AXES_ENABLE_ADMIN = False
+
 # ==================== 日志：每天一个文件，保留7天 ====================
 LOG_DIR = BASE_DIR / 'logs'
 os.makedirs(LOG_DIR, exist_ok=True)
