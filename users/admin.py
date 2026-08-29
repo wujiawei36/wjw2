@@ -1,5 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
-from .models import CustomUser, Notification, Ban_IP
+from .models import CustomUser, Notification, Ban_IP, InviteCode, generate_invite_code
 from django.contrib.sessions.models import Session
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth.admin import UserAdmin
@@ -9,6 +9,7 @@ from django.contrib import admin, messages
 from django.contrib.auth import logout
 from django.shortcuts import redirect
 from django.utils import timezone
+from datetime import timedelta
 from hijack.contrib.admin import HijackUserAdminMixin
 
 
@@ -164,6 +165,47 @@ class Ban_IP_Admin(admin.ModelAdmin):
     ordering = ["updated_at"]  # 默认按时间升序
     list_filter = ["active", "updated_at"]
     search_fields = ["ip"]
+
+
+@admin.register(InviteCode)
+class InviteCodeAdmin(admin.ModelAdmin):
+    list_display = ['code', 'status_text', 'created_by', 'created_at', 'expires_at', 'used_at', 'used_by']
+    list_filter = ['expires_at']
+    search_fields = ['code', 'used_by__username']
+    # 使用信息只能看不能改（一次性、绑定注册账号）
+    readonly_fields = ['created_by', 'created_at', 'used_at', 'used_by']
+    actions = ['create_7d_invite_codes', 'create_30d_invite_codes']
+
+    @admin.display(description='状态')
+    def status_text(self, obj):
+        return obj.status_text
+
+    def save_model(self, request, obj, form, change):
+        # 新建时自动生成邀请码、默认创建者为当前管理员
+        if not obj.code:
+            obj.code = generate_invite_code()
+        if not obj.created_by_id:
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)
+
+    @admin.action(description='生成 3 个有效期 7 天的邀请码')
+    def create_7d_invite_codes(self, request, queryset):
+        self._bulk_create_codes(request, days=7)
+
+    @admin.action(description='生成 3 个有效期 30 天的邀请码')
+    def create_30d_invite_codes(self, request, queryset):
+        self._bulk_create_codes(request, days=30)
+
+    def _bulk_create_codes(self, request, days):
+        count = 0
+        for _ in range(3):
+            InviteCode.objects.create(
+                code=generate_invite_code(),
+                created_by=request.user,
+                expires_at=timezone.now() + timedelta(days=days),
+            )
+            count += 1
+        messages.success(request, f'已生成 {count} 个有效期 {days} 天的邀请码')
 
 # ==================== django-axes 记录（只读） ====================
 # 三个页面：Access attempts(失败聚合) / Access failures(失败流水) / Access logs(成功登录)

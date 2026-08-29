@@ -1,5 +1,13 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+import secrets
+import string
+
+def generate_invite_code(length=8):
+    """生成 8 位大写字母+数字邀请码，剔除易混淆字符（0/O/1/I/L）"""
+    alphabet = string.ascii_uppercase + string.digits
+    alphabet = alphabet.replace('O', '').replace('0', '').replace('I', '').replace('L', '').replace('1', '')
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
 
 class CustomUser(AbstractUser):
     # 在这里添加你的自定义字段
@@ -42,3 +50,49 @@ class Ban_IP(models.Model):
         from users.middleware import banned_ip_cache
         banned_ip_cache.clear()
         return super().delete(*args, **kwargs)
+
+
+class InviteCode(models.Model):
+    code = models.CharField('邀请码', max_length=16, unique=True)
+    created_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.CASCADE,
+        related_name='created_invite_codes',
+        verbose_name='创建者',
+    )
+    created_at = models.DateTimeField('创建时间', auto_now_add=True)
+    expires_at = models.DateTimeField('有效期至')
+    used_at = models.DateTimeField('使用时间', null=True, blank=True)
+    used_by = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='used_invite_code',
+        verbose_name='使用者',
+    )
+
+    class Meta:
+        verbose_name = '邀请码'
+        verbose_name_plural = '邀请码'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.code
+
+    @property
+    def is_used(self):
+        return self.used_at is not None
+
+    @property
+    def is_expired(self):
+        from django.utils import timezone
+        return self.expires_at <= timezone.now()
+
+    @property
+    def status_text(self):
+        if self.is_used:
+            return '已使用'
+        if self.is_expired:
+            return '已过期'
+        return '可用'

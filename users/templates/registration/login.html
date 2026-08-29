@@ -8,7 +8,7 @@
     <h1 class="h1-text">
         登录
     </h1>
-    <form action="" method="post" name="login_form">
+    <form action="" method="post" name="login_form" onsubmit="return validateForm()">
         {% csrf_token %}
         <input type="hidden" name="required">
         用户名或用户编号:
