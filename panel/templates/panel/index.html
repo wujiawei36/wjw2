@@ -7,41 +7,47 @@
 		这里是管理页面。
 	</p>
 	<a class="a-text" href="/admin">Django管理后台</a><br>
+	<br>
+
 	{% if request.user.can_develop %}
 		<h2>开发&运行</h2>
-		<a class="a-text" href="run_command">运行命令</a><br>
-		<a class="a-text" href="invite_codes">生成邀请码</a><br>
+		<a class="a-text" href="run_command">运行命令</a> <span class="p-text">- 清理验证码/会话</span><br>
+		<a class="a-text" href="invite_codes">生成邀请码</a> <span class="p-text">- 快捷页(数量/有效期)</span><br>
+		{% if perms.contenttypes.view_contenttype %}
+			<a class="a-text" href="/admin/contenttypes/contenttype">内容类型</a> <span class="p-text">- 开发调试用</span><br>
+		{% endif %}
 	{% endif %}
-	<h2>Django管理后台的管理选项</h2>
-	{% if perms.users.view_ban_ip %}
-		<a class="a-text" href="/admin/users/ban_ip">封禁IP</a><br>
-	{% endif %}
+
+	<h2>用户管理</h2>
 	{% if perms.users.view_user %}
-		<a class="a-text" href="/admin/users/customuser">用户</a><br>
+		<a class="a-text" href="/admin/users/customuser">用户</a> <span class="p-text">- 账号/权限/劫持</span><br>
 	{% endif %}
 	{% if perms.users.view_notification %}
-		<a class="a-text" href="/admin/users/notification">用户通知</a><br>
+		<a class="a-text" href="/admin/users/notification">用户通知</a> <span class="p-text">- 通知内容</span><br>
 	{% endif %}
+	{% if perms.users.view_ban_ip %}
+		<a class="a-text" href="/admin/users/ban_ip">封禁IP</a> <span class="p-text">- 手动封禁/自动封禁记录</span><br>
+	{% endif %}
+
+	<h2>会话与日志</h2>
 	{% if perms.sessions.view_session %}
-		<a class="a-text" href="/admin/sessions/session">会话</a><br>
-	{% endif %}
-	{% if perms.contenttypes.view_contenttype %}
-		<a class="a-text" href="/admin/contenttypes/contenttype">内容类型</a><br>
+		<a class="a-text" href="/admin/sessions/session">会话</a> <span class="p-text">- 在线用户/IP/强制下线</span><br>
 	{% endif %}
 	{% if perms.admin.view_logentry %}
-		<a class="a-text" href="/admin/admin/logentry">日志记录</a><br>
+		<a class="a-text" href="/admin/admin/logentry">日志记录</a> <span class="p-text">- 后台操作审计(只读)</span><br>
 	{% endif %}
+
 	<h2>安全与审计</h2>
 	{% if perms.users.view_invitecode %}
-		<a class="a-text" href="/admin/users/invitecode">邀请码</a><br>
+		<a class="a-text" href="/admin/users/invitecode">邀请码</a> <span class="p-text">- 有效期/使用情况</span><br>
 	{% endif %}
 	{% if perms.axes.view_accessattempt %}
-		<a class="a-text" href="/admin/axes/accessattempt/">登录尝试(防爆破)</a><br>
+		<a class="a-text" href="/admin/axes/accessattempt/">登录尝试</a> <span class="p-text">- 防爆破聚合(只读)</span><br>
 	{% endif %}
 	{% if perms.axes.view_accessfailurelog %}
-		<a class="a-text" href="/admin/axes/accessfailurelog/">失败流水</a><br>
+		<a class="a-text" href="/admin/axes/accessfailurelog/">失败流水</a> <span class="p-text">- 每次失败明细(只读)</span><br>
 	{% endif %}
 	{% if perms.axes.view_accesslog %}
-		<a class="a-text" href="/admin/axes/accesslog/">成功登录记录</a><br>
+		<a class="a-text" href="/admin/axes/accesslog/">成功登录记录</a> <span class="p-text">- 谁何时登录(只读)</span><br>
 	{% endif %}
 {% endblock %}
