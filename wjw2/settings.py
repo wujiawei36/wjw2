@@ -63,6 +63,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'utils.logging_utils.LoggingContextMiddleware',  # 注入日志上下文（IP/路径），需最先执行
     'users.middleware.IPBlockMiddleware',
     'users.middleware.RequestBlockingMiddleware',
     'django.middleware.security.SecurityMiddleware',
@@ -187,9 +188,12 @@ STATICFILES_DIRS = [
 
 AUTH_USER_MODEL = 'users.CustomUser'
 
-# 用于获取用户真实ip(而非本地转发的127.0.0.1)
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-USE_X_FORWARDED_HOST = True
+# 代理头仅在确认位于可信反向代理之后才信任（否则客户端可伪造
+# X-Forwarded-Proto / X-Forwarded-Host，影响 is_secure()/get_host() 判断）。
+# PythonAnywhere 等平台无需开启，它们会直接提供正确的请求协议。
+if TRUST_PROXY:
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+    USE_X_FORWARDED_HOST = True
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = os.getenv('EMAIL_HOST')
@@ -256,13 +260,18 @@ os.makedirs(LOG_DIR, exist_ok=True)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'filters': {
+        'request_context': {
+            '()': 'utils.logging_utils.RequestContextFilter',
+        },
+    },
     'formatters': {
         'verbose': {
-            'format': '[{asctime}] {levelname} {name} {process:d}/{thread:d} {message}',
+            'format': '[{asctime}] [{ip}] [{path}] {levelname} {name} {process:d}/{thread:d} {message}',
             'style': '{',
         },
         'simple': {
-            'format': '[{asctime}] {levelname} {message}',
+            'format': '[{asctime}] [{ip}] [{path}] {levelname} {message}',
             'style': '{',
         },
     },
@@ -275,10 +284,12 @@ LOGGING = {
             'backupCount': 7,     # 只保留最近 7 个文件（含当前），更早的自动删除
             'encoding': 'utf-8',
             'formatter': 'verbose',
+            'filters': ['request_context'],
         },
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'simple',
+            'filters': ['request_context'],
         },
     },
     'root': {
