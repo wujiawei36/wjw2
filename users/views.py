@@ -52,7 +52,9 @@ def auth_login(request):
 
 	if request.method == 'POST':
 		# 蜜罐：正常人不会填 hidden 字段，填了即为机器人 → 静默拒绝（不提示、不消耗验证码）
+		# 同时删除本次提交的验证码记录，避免每次渲染新验证码导致旧记录残留
 		if request.POST.get('required'):
+			CaptchaStore.objects.filter(hashkey=request.POST.get('captcha_key', '')).delete()
 			return render(request, 'registration/login.html', get_captchas())
 
 		username = request.POST.get('username', '').strip()
@@ -61,14 +63,9 @@ def auth_login(request):
 		captcha_key = request.POST.get('captcha_key', '')
 
 		# 验证码校验（先校验验证码，再进行任何用户查询，避免被用于探测）
-		try:
-			captcha = CaptchaStore.objects.get(hashkey=captcha_key)
-			if captcha.response.upper() != captcha_value.upper():
-				captcha.delete()
-				return render(request, 'registration/login.html', {**get_captchas(), 'errors': '验证码错误'})
-			captcha.delete()
-		except CaptchaStore.DoesNotExist:
-			return render(request, 'registration/login.html', {**get_captchas(), 'errors': '验证码过期或无效'})
+		ok, err = _verify_captcha(request, captcha_value, captcha_key)
+		if not ok:
+			return render(request, 'registration/login.html', {**get_captchas(), 'errors': err})
 
 		# 用户名或用户ID解析
 		username, err = _resolve_username(username)
@@ -125,8 +122,9 @@ def auth_register(request):
 		return redirect('/')
 
 	if request.method == 'POST':
-		# 蜜罐：填了 hidden 字段的均为机器人，静默拒绝
+		# 蜜罐：填了 hidden 字段的均为机器人，静默拒绝；同时删除本次验证码记录防残留
 		if request.POST.get('required'):
+			CaptchaStore.objects.filter(hashkey=request.POST.get('captcha_key', '')).delete()
 			return render(request, 'registration/register.html', get_captchas())
 
 		username = request.POST.get('username', '').strip()
