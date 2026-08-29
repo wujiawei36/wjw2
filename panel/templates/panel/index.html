@@ -10,6 +10,7 @@
 	{% if request.user.can_develop %}
 		<h2>开发&运行</h2>
 		<a class="a-text" href="run_command">运行命令</a><br>
+		<a class="a-text" href="invite_codes">生成邀请码</a><br>
 	{% endif %}
 	<h2>Django管理后台的管理选项</h2>
 	{% if perms.users.view_ban_ip %}
@@ -29,5 +30,18 @@
 	{% endif %}
 	{% if perms.admin.view_logentry %}
 		<a class="a-text" href="/admin/admin/logentry">日志记录</a><br>
+	{% endif %}
+	<h2>安全与审计</h2>
+	{% if perms.users.view_invitecode %}
+		<a class="a-text" href="/admin/users/invitecode">邀请码</a><br>
+	{% endif %}
+	{% if perms.axes.view_accessattempt %}
+		<a class="a-text" href="/admin/axes/accessattempt/">登录尝试(防爆破)</a><br>
+	{% endif %}
+	{% if perms.axes.view_accessfailurelog %}
+		<a class="a-text" href="/admin/axes/accessfailurelog/">失败流水</a><br>
+	{% endif %}
+	{% if perms.axes.view_accesslog %}
+		<a class="a-text" href="/admin/axes/accesslog/">成功登录记录</a><br>
 	{% endif %}
 {% endblock %}

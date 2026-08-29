@@ -4,6 +4,9 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.sessions.models import Session
 from django.core.management import call_command
 from django.shortcuts import render, redirect
+from django.utils import timezone
+from datetime import timedelta
+from users.models import InviteCode, generate_invite_code
 from io import StringIO
 import sys
 import logging
@@ -57,3 +60,38 @@ def run_command(request):
         return render(request, 'panel/run_command.html', {'text': text, 'output': buffer.getvalue()})
 
     return render(request, 'panel/run_command.html')
+
+
+@login_required
+@staff_member_required
+@user_passes_test(can_develop, login_url='/panel')
+def invite_codes(request):
+    """生成邀请码快捷页：自定义数量 + 有效期天数"""
+    if request.method == 'POST':
+        try:
+            count = int(request.POST.get('count', ''))
+            days = int(request.POST.get('days', ''))
+        except (TypeError, ValueError):
+            return render(request, 'panel/invite_codes.html', {'errors': '数量和有效期必须是数字'})
+        if not (1 <= count <= 20):
+            return render(request, 'panel/invite_codes.html', {'errors': '数量需在 1-20 之间'})
+        if not (1 <= days <= 365):
+            return render(request, 'panel/invite_codes.html', {'errors': '有效期需在 1-365 天之间'})
+
+        expires_at = timezone.now() + timedelta(days=days)
+        codes = []
+        for _ in range(count):
+            ic = InviteCode.objects.create(
+                code=generate_invite_code(),
+                created_by=request.user,
+                expires_at=expires_at,
+            )
+            codes.append(ic)
+
+        logger.info('INVITE_CODES_GENERATED 用户[%s](id=%s) 生成 %d 个邀请码(有效期 %d 天)',
+                    request.user.username, request.user.id, count, days)
+        return render(request, 'panel/invite_codes.html', {
+            'codes': codes, 'count': count, 'days': days,
+        })
+
+    return render(request, 'panel/invite_codes.html')

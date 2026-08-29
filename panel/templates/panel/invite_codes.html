@@ -1,0 +1,42 @@
+{% extends 'panel/base.html' %}
+
+{% block head %}
+<title>生成邀请码 - 管理 - {{ site_name }}</title>
+{% endblock %}
+
+{% block content %}
+	<h1 class="h1-text">
+		生成邀请码
+	</h1>
+    <form method="POST">
+        {% csrf_token %}
+        数量:
+        <input type="number" name="count" min="1" max="20" value="3" required>
+        (1-20)
+        <br>
+        有效期:
+        <input type="number" name="days" min="1" max="365" value="7" required>
+        天 (1-365)
+        <br>
+        <input type="checkbox" id="confirm" required>
+        <label for="confirm">我确认生成上述邀请码</label>
+        <br>
+        <input type="submit" value="生成">
+    </form>
+    {% if errors %}
+    <p class="p-text" style="color: red">
+        错误: {{ errors }}
+    </p>
+    {% endif %}
+    {% if codes %}
+        <p class="p-text">
+            已生成 {{ count }} 个邀请码（有效期 {{ days }} 天，至 {{ codes.0.expires_at|date:"Y-m-d H:i" }}）：
+        </p>
+        <ul>
+            {% for code in codes %}
+                <li class="li-text"><code>{{ code.code }}</code></li>
+            {% endfor %}
+        </ul>
+        <p class="p-text">提示：邀请码已在后台登记，被使用后会自动标记，请勿泄露。</p>
+    {% endif %}
+{% endblock %}
