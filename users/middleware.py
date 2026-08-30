@@ -179,6 +179,8 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 		if not user_agent or any(bot in user_agent for bot in [
 			'python-requests', 'curl', 'wget', 'scrapy', 'bot', 'spider'
 		]):
+			logger.warning('UA_BLOCK IP[%s] UA黑名单拦截 path=%s UA=[%s]',
+			               ip, request.path_info, user_agent[:200])
 			return HttpResponseForbidden(
 				"非法请求：爬虫/脚本UA禁止访问", 
 				status=403, 
@@ -200,6 +202,8 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 						  if not request.META.get(header, '').strip()]
 
 		if missing_headers:
+			logger.warning('HEADER_BLOCK IP[%s] 缺头拦截 path=%s missing=%s UA=[%s]',
+			               ip, request.path_info, missing_headers, user_agent[:200])
 			return HttpResponseForbidden(
 				"非法请求：爬虫/脚本伪装浏览器访问，禁止访问！", 
 				status=403, 
@@ -210,6 +214,8 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 		if any(headless_tool in user_agent for headless_tool in [
 			'headless', 'selenium', 'playwright', 'puppeteer', 'phantomjs'
 		]):
+			logger.warning('HEADLESS_BLOCK IP[%s] 无头浏览器拦截 path=%s UA=[%s]',
+			               ip, request.path_info, user_agent[:200])
 			return HttpResponseForbidden(
 				"非法请求：无头浏览器/自动化脚本禁止访问！", 
 				status=403, 
