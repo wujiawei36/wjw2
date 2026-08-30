@@ -6,8 +6,6 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
 from django.utils.safestring import mark_safe
 from django.contrib import admin, messages
-from django.contrib.auth import logout
-from django.shortcuts import redirect
 from django.utils import timezone
 from datetime import timedelta
 from hijack.contrib.admin import HijackUserAdminMixin
@@ -106,28 +104,8 @@ class ContentTypeAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None): return False
     def has_delete_permission(self, request, obj=None): return False
 
-# 3. 会话管理（可删除 = 踢人）
-@admin.action(description='清理过期会话')
-def clear_expired_sessions(modeladmin, request, queryset):
-    count, _ = Session.objects.filter(expire_date__lt=timezone.now()).delete()
-    messages.success(request, f'已清理 {count} 条过期会话')
-
-@admin.action(description='清理所有会话（包括自己）')
-def clear_all_sessions(modeladmin, request, queryset):
-    # 先记下自己是不是在里面
-    my_key = request.session.session_key
-
-    count, _ = queryset.delete()
-
-    # 如果把自己也删了，主动登出并跳转
-    if my_key:
-        logout(request)
-        messages.warning(request, f'已清理 {count} 条会话（包括你自己）')
-        return redirect('/admin/login/')
-
-    messages.success(request, f'已清理 {count} 条会话')
-
-# 如果之前已经注册过，需要先注销（防止报错）
+# 3. 会话管理（只读脱敏：清理会话请在 panel 的「运行命令」执行 _clear_all_session）
+# 先注销 django.contrib.sessions 自带的注册，否则重复注册会报错
 try:
     admin.site.unregister(Session)
 except admin.sites.NotRegistered:
@@ -135,7 +113,18 @@ except admin.sites.NotRegistered:
 
 @admin.register(Session)
 class CustomSessionAdmin(admin.ModelAdmin):
-    list_display = ['session_key', 'userid', 'ip_address', 'expire_date']
+    # 安全说明：session key 等于在线身份，绝不能以任何形式出现在页面上！
+    # - list_display 不展示 key；exclude 排除详情页原始字段
+    # - actions 必须为空：admin 的 action checkbox 的 value/aria-label 就是对象主键，
+    #   只要有 checkbox，完整 session key 就会写进 HTML 源码，等于明文泄露
+    # - list_display_links=None：列表行不可点击，杜绝详情页(URL 含 key)入口
+    # 清理会话请走 panel：/panel/run_command 的「清理所有会话」（记录审计日志）
+    list_display = ['userid', 'ip_address', 'expire_date']
+    exclude = ['session_data', 'session_key']
+    list_display_links = None
+    actions = []
+    def has_add_permission(self, request): return False
+    def has_change_permission(self, request, obj=None): return False
 
     def userid(self, obj):
         """从 session 数据中取出用户 ID"""
@@ -155,9 +144,6 @@ class CustomSessionAdmin(admin.ModelAdmin):
         session_data = obj.get_decoded()
         return session_data.get('ip_address', '无')
     ip_address.short_description = 'IP 地址'
-    actions = [clear_expired_sessions, clear_all_sessions]  # ← 加这一行
-    def has_add_permission(self, request): return False
-    def has_change_permission(self, request, obj=None): return False
 
 @admin.register(Ban_IP)
 class Ban_IP_Admin(admin.ModelAdmin):

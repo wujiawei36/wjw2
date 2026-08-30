@@ -104,3 +104,30 @@ class RequestBlockingHeaderTests(TestCase):
         resp = self._middleware().process_request(req)
         self.assertIsNone(resp, '浏览器请求不应被拦截')
 
+
+
+class SessionAdminLeakTests(TestCase):
+    """会话管理页绝不能泄露完整 session key（防会话劫持）"""
+
+    def setUp(self):
+        from django.contrib.sessions.models import Session
+        self.Session = Session
+        # 创建一个持有 view_session 权限的 staff 账号
+        from django.contrib.auth.models import Permission
+        from django.contrib.contenttypes.models import ContentType
+        self.observer = User.objects.create_user(username='session_viewer', password='pass-view-123456', is_staff=True)
+        ct = ContentType.objects.get_for_model(self.Session)
+        self.observer.user_permissions.add(Permission.objects.get(content_type=ct, codename='view_session'))
+
+    def test_session_list_page_never_exposes_key(self):
+        # 伪造一条会话记录（完整 32 位 key）
+        self.Session.objects.create(session_key='a' * 32, session_data='', expire_date='2030-01-01T00:00:00Z')
+        self.client.force_login(self.observer)
+        resp = self.client.get('/admin/sessions/session/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        # 完整 key 绝不能出现在页面上（文本/checkbox value/aria-label/URL 均不可）
+        self.assertNotIn('a' * 32, body)
+        # admin action checkbox 的 value 就是主键，必须确认没有渲染 checkbox
+        self.assertNotIn('action-checkbox', body)
+        self.assertNotIn('_selected_action', body)

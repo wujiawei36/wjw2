@@ -25,8 +25,6 @@ class SessionInfoMiddleware:
                 request.session['user_agent'] = ua
         return self.get_response(request)
 
-# logger = logging.getLogger('django')
-
 # ===================== 配置项 =====================
 # 请求限制配置（统计窗口：10 秒）
 REQUEST_BLOCKING_MIDDLEWARE__TIME = 10  # 统计窗口时间（秒）
