@@ -277,7 +277,9 @@ class PageVisitMiddleware(MiddlewareMixin):
 	  （生产环境 whitenoise 会在更早阶段直接返回静态文件，这里的前缀判断
 	  主要兜底本地开发环境。）
 	- 记录真实 IP（复用 get_ip，TRUST_PROXY=True 时取 X-Real-IP/XFF）。
-	- 任何异常静默降级，绝不影响正常请求；待 cleanup_page_visits 定期清理。
+	- 同时打一条 INFO 访问日志 → django.log 里有完整访问记录（日志轮转保留 7 天），
+	  因此 PageVisit 表只保留今日数据即可（cleanup_page_visits --days 1 清理）。
+	- 任何异常静默降级，绝不影响正常请求。
 	"""
 	EXCLUDE_PREFIXES = ('/static/', '/admin/', '/panel/', '/captcha/')
 
@@ -290,6 +292,11 @@ class PageVisitMiddleware(MiddlewareMixin):
 					path=path[:255],
 					ip=get_ip(request) or None,
 				)
+				# 完整访问日志：仅普通页面（排除前缀同上），状态码+方法+路径
+				logger.info('PAGE_VISIT %s %s %s',
+				            response.status_code,
+				            request.method,
+				            path[:255])
 		except Exception:
 			# 表未迁移等场景：记录日志但绝不影响用户请求
 			logger.warning('PAGE_VISIT_RECORD_FAIL 记录访问失败 path=%s', getattr(request, 'path_info', ''))

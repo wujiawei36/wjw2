@@ -7,10 +7,10 @@ from users.models import PageVisit
 
 
 class Command(BaseCommand):
-    help = '清理过期的页面访问记录（默认保留 30 天）'
+    help = '清理过期的页面访问记录（默认只保留今日，完整历史见 django.log）'
 
     def add_arguments(self, parser):
-        parser.add_argument('--days', type=int, default=30, help='保留天数（默认 30）')
+        parser.add_argument('--days', type=int, default=1, help='保留天数（默认 1，即只保留今日）')
 
     def handle(self, *args, **options):
         days = options['days']

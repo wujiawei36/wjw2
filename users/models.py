@@ -68,7 +68,8 @@ class PageVisit(models.Model):
     """页面访问记录（轻量埋点）：供仪表盘「今日访问」等统计使用。
 
     由 PageVisitMiddleware 写入；静态文件/管理后台/panel/验证码路径不记录。
-    记录会随 cleanup_page_visits 管理命令定期清理（默认保留 30 天）。
+    完整访问历史见 django.log（每次访问有一条 PAGE_VISIT 日志，保留 7 天），
+    因此本表只保留今日数据（cleanup_page_visits 默认清掉昨日及更早）。
     """
     path = models.CharField('访问路径', max_length=255)
     ip = models.GenericIPAddressField('IP', null=True, blank=True)

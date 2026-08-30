@@ -59,6 +59,15 @@ class PageVisitMiddlewareTests(TestCase):
         self.assertEqual(visit.path, '/')
         self.assertEqual(visit.ip, '127.0.0.1')
 
+    def test_visit_logged_to_django_log(self):
+        """每次访问应落一条 PAGE_VISIT 日志（django.log 保留 7 天，是表数据的完整备份）"""
+        with self.assertLogs('users.middleware', level='INFO') as cm:
+            self.client.get('/')
+        self.assertTrue(
+            any('PAGE_VISIT 200 GET /' in line for line in cm.output),
+            '应输出 PAGE_VISIT 访问日志',
+        )
+
     def test_excluded_paths_not_recorded(self):
         for url in ['/static/anything.css', '/admin/login/', '/panel/', '/captcha/refresh/']:
             self.client.get(url)

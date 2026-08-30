@@ -49,8 +49,8 @@ echo "==> [4/6] 配置检查 (manage.py check)"
 echo "==> [5/7] 数据库迁移"
 "$PY" manage.py migrate
 
-echo "==> [6/7] 清理过期访问记录（保留 30 天）"
-"$PY" manage.py cleanup_page_visits --days 30
+echo "==> [6/7] 清理过期访问记录（只保留今日，完整历史见 django.log）"
+"$PY" manage.py cleanup_page_visits --days 1
 
 echo "==> [7/7] 收集静态文件"
 "$PY" manage.py collectstatic --noinput
