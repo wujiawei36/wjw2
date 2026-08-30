@@ -131,3 +131,39 @@ class SessionAdminLeakTests(TestCase):
         # admin action checkbox 的 value 就是主键，必须确认没有渲染 checkbox
         self.assertNotIn('action-checkbox', body)
         self.assertNotIn('_selected_action', body)
+
+
+class InviteCodeAdminTests(TestCase):
+    """后台新建邀请码：code 留空应自动生成，而不是报必填错误"""
+
+    def setUp(self):
+        from django.utils import timezone
+        self.admin = User.objects.create_user(username='invite_admin', password='pass-invite-123456', is_staff=True, is_superuser=True)
+        self.expires = timezone.now() + timezone.timedelta(days=7)
+
+    def test_blank_code_auto_generated_on_create(self):
+        from users.models import InviteCode
+        self.client.force_login(self.admin)
+        # 关键回归点：提交时 code 留空
+        resp = self.client.post('/admin/users/invitecode/add/', {
+            'code': '',
+            'expires_at_0': self.expires.strftime('%Y-%m-%d'),
+            'expires_at_1': self.expires.strftime('%H:%M:%S'),
+        })
+        # 不应报"必填"错误，应重定向到 changelist
+        self.assertEqual(resp.status_code, 302, f'留空被表单拦截：{resp.content[:200]}')
+        code = InviteCode.objects.first()
+        self.assertIsNotNone(code)
+        self.assertTrue(code.code)          # 自动生成了随机码
+        self.assertEqual(code.created_by, self.admin)
+        self.assertGreaterEqual(len(code.code), 6)
+
+    def test_manual_code_respected(self):
+        from users.models import InviteCode
+        self.client.force_login(self.admin)
+        self.client.post('/admin/users/invitecode/add/', {
+            'code': 'MANUAL-CODE',
+            'expires_at_0': self.expires.strftime('%Y-%m-%d'),
+            'expires_at_1': self.expires.strftime('%H:%M:%S'),
+        })
+        self.assertTrue(InviteCode.objects.filter(code='MANUAL-CODE').exists())

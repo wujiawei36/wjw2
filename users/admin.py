@@ -162,6 +162,15 @@ class InviteCodeAdmin(admin.ModelAdmin):
     readonly_fields = ['created_by', 'created_at', 'used_at', 'used_by']
     actions = ['create_7d_invite_codes', 'create_30d_invite_codes']
 
+    def get_form(self, request, obj=None, **kwargs):
+        # 模型字段 code 未设 blank=True，admin 自动表单会把它当必填；
+        # 实际新建时留空应自动生成随机码（save_model 中处理），故这里改为非必填
+        form = super().get_form(request, obj, **kwargs)
+        if obj is None and 'code' in form.base_fields:
+            form.base_fields['code'].required = False
+            form.base_fields['code'].help_text = '留空自动生成随机邀请码'
+        return form
+
     @admin.display(description='状态')
     def status_text(self, obj):
         return obj.status_text
