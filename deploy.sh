@@ -4,7 +4,7 @@
 # 用法：远程 git pull 之后，在项目根目录执行：
 #     bash deploy.sh
 # 脚本会自动完成：备份数据库 → 依赖安装 → 配置检查 → 数据库迁移
-#                 → 静态文件收集 → 重启应用
+#                 → 清理过期访问记录 → 静态文件收集 → 重启应用
 # 兼容：本地开发机（wjw2-env）与 PythonAnywhere（~/.virtualenvs/wjw2-env）
 # ============================================================
 set -euo pipefail
@@ -46,10 +46,13 @@ echo "==> [3/6] 安装 / 更新依赖"
 echo "==> [4/6] 配置检查 (manage.py check)"
 "$PY" manage.py check
 
-echo "==> [5/6] 数据库迁移"
+echo "==> [5/7] 数据库迁移"
 "$PY" manage.py migrate
 
-echo "==> [6/6] 收集静态文件"
+echo "==> [6/7] 清理过期访问记录（保留 30 天）"
+"$PY" manage.py cleanup_page_visits --days 30
+
+echo "==> [7/7] 收集静态文件"
 "$PY" manage.py collectstatic --noinput
 
 # PythonAnywhere 通过 touch 其 WSGI 文件来重启应用

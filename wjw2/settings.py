@@ -74,6 +74,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'users.middleware.SessionInfoMiddleware',
+    'users.middleware.PageVisitMiddleware',  # 页面访问埋点（在封禁/限流中间件之后，被拦截请求不记录）
     'hijack.middleware.HijackUserMiddleware',  # 处理劫持会话[reference:13]
     'axes.middleware.AxesMiddleware',  # 登录防爆破，放在最后
 ]

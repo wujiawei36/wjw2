@@ -263,3 +263,34 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 		
 		# 所有检查通过，正常放行请求
 		return None
+
+
+class PageVisitMiddleware(MiddlewareMixin):
+	"""
+	页面访问埋点：在响应阶段记录一次页面访问（PageVisit）。
+
+	设计说明：
+	- 放在 RequestBlockingMiddleware / IPBlockMiddleware 之后：被拦截的请求
+	  （封禁、限流、爬虫）在 process_request 阶段直接返回，不会进入本中间件，
+	  天然不记录恶意流量。
+	- 排除前缀：静态文件、后台管理(/admin)、panel 管理页、验证码图片。
+	  （生产环境 whitenoise 会在更早阶段直接返回静态文件，这里的前缀判断
+	  主要兜底本地开发环境。）
+	- 记录真实 IP（复用 get_ip，TRUST_PROXY=True 时取 X-Real-IP/XFF）。
+	- 任何异常静默降级，绝不影响正常请求；待 cleanup_page_visits 定期清理。
+	"""
+	EXCLUDE_PREFIXES = ('/static/', '/admin/', '/panel/', '/captcha/')
+
+	def process_response(self, request, response):
+		try:
+			from .models import PageVisit
+			path = request.path_info or request.path or ''
+			if not path.startswith(self.EXCLUDE_PREFIXES):
+				PageVisit.objects.create(
+					path=path[:255],
+					ip=get_ip(request) or None,
+				)
+		except Exception:
+			# 表未迁移等场景：记录日志但绝不影响用户请求
+			logger.warning('PAGE_VISIT_RECORD_FAIL 记录访问失败 path=%s', getattr(request, 'path_info', ''))
+		return response

@@ -40,6 +40,11 @@
             <div class="dash-num">{{ stats.today_logins }}</div>
         </div>
         <div class="dash-card">
+            <div class="dash-label">今日访问</div>
+            <div class="dash-num">{{ stats.today_visits }}</div>
+            <div class="dash-sub">页面请求 · 不含管理端</div>
+        </div>
+        <div class="dash-card">
             <div class="dash-label">24h 失败尝试</div>
             <div class="dash-num">{{ stats.failures_24h }}</div>
             <div class="dash-sub">当前锁定 {{ stats.locked_now }}</div>

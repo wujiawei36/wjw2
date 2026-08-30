@@ -11,7 +11,7 @@ from django.db.models.functions import TruncHour
 from django.conf import settings
 from datetime import timedelta
 from axes.models import AccessFailureLog, AccessLog, AccessAttempt
-from users.models import InviteCode, Ban_IP, create_invite_code
+from users.models import InviteCode, Ban_IP, PageVisit, create_invite_code
 from io import StringIO
 import sys
 import logging
@@ -110,6 +110,7 @@ def dashboard(request):
     stats = {
         'user_count': User.objects.count(),
         'today_logins': AccessLog.objects.filter(attempt_time__gte=today_start).count(),
+        'today_visits': PageVisit.objects.filter(created_at__gte=today_start).count(),
         'failures_24h': AccessFailureLog.objects.filter(attempt_time__gte=hours_24).count(),
         'locked_now': AccessAttempt.objects.filter(
             failures_since_start__gte=limit,

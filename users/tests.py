@@ -1,5 +1,6 @@
 from django.test import TestCase, RequestFactory
 from django.contrib.auth import authenticate, get_user_model
+from users.models import PageVisit
 
 User = get_user_model()
 
@@ -46,3 +47,19 @@ class AxesLockoutTests(TestCase):
 
         # user_b 的失败计数应保持 0（组合锁定：user_a 的失败与 user_b 无关）
         self.assertEqual(self._failures(req, 'axes_user_b'), 0)
+
+
+class PageVisitMiddlewareTests(TestCase):
+    """访问埋点：普通页面记录，静态/管理/panel/验证码路径不记录"""
+
+    def test_normal_page_recorded(self):
+        self.client.get('/')
+        self.assertEqual(PageVisit.objects.count(), 1)
+        visit = PageVisit.objects.first()
+        self.assertEqual(visit.path, '/')
+        self.assertEqual(visit.ip, '127.0.0.1')
+
+    def test_excluded_paths_not_recorded(self):
+        for url in ['/static/anything.css', '/admin/login/', '/panel/', '/captcha/refresh/']:
+            self.client.get(url)
+        self.assertEqual(PageVisit.objects.count(), 0)

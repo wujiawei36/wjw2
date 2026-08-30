@@ -64,6 +64,25 @@ class Ban_IP(models.Model):
         return super().delete(*args, **kwargs)
 
 
+class PageVisit(models.Model):
+    """页面访问记录（轻量埋点）：供仪表盘「今日访问」等统计使用。
+
+    由 PageVisitMiddleware 写入；静态文件/管理后台/panel/验证码路径不记录。
+    记录会随 cleanup_page_visits 管理命令定期清理（默认保留 30 天）。
+    """
+    path = models.CharField('访问路径', max_length=255)
+    ip = models.GenericIPAddressField('IP', null=True, blank=True)
+    created_at = models.DateTimeField('访问时间', auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = '页面访问'
+        verbose_name_plural = '页面访问'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.path} @ {self.created_at:%m-%d %H:%M}'
+
+
 class InviteCode(models.Model):
     code = models.CharField('邀请码', max_length=16, unique=True)
     created_by = models.ForeignKey(
