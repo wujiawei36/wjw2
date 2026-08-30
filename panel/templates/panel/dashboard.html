@@ -1,0 +1,92 @@
+{% extends 'panel/base.html' %}
+
+{% block head %}
+<title>仪表盘 - 管理 - {{ site_name }}</title>
+<style>
+    .dash { max-width: 760px; }
+    .dash-stats { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .dash-card { flex: 1; min-width: 140px; background: #f5f5f2; border-radius: 8px; padding: 10px 14px; }
+    .dash-label { font-size: 12px; color: #666; margin-bottom: 2px; }
+    .dash-num { font-size: 26px; font-weight: 500; }
+    .dash-sub { font-size: 11px; color: #999; }
+    .dash-row { display: flex; gap: 16px; margin-bottom: 18px; flex-wrap: wrap; }
+    .dash-box { flex: 1; min-width: 300px; background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; }
+    .dash-t { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+    .dash-chart { display: flex; align-items: flex-end; gap: 3px; height: 90px; }
+    .dash-bar { flex: 1; background: #e24b4a; border-radius: 2px 2px 0 0; min-height: 2px; }
+    .dash-x { display: flex; gap: 3px; margin-top: 6px; font-size: 11px; color: #999; }
+    .dash-x span { flex: 1; text-align: center; }
+    .dash-li { display: flex; justify-content: space-between; align-items: center; font-size: 13px; padding: 6px 0; border-bottom: 0.5px solid #eee; }
+    .dash-li:last-child { border-bottom: none; }
+    .dash-li time { color: #999; font-size: 12px; margin-left: 10px; white-space: nowrap; }
+    .dash-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 8px; }
+    .d-bad { background: #e24b4a; }
+    .d-warn { background: #ef9f27; }
+    .d-ok { background: #639922; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dash">
+    <h1 class="h1-text">仪表盘</h1>
+
+    <div class="dash-stats">
+        <div class="dash-card">
+            <div class="dash-label">用户数量</div>
+            <div class="dash-num">{{ stats.user_count }}</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-label">今日登录</div>
+            <div class="dash-num">{{ stats.today_logins }}</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-label">24h 失败尝试</div>
+            <div class="dash-num">{{ stats.failures_24h }}</div>
+            <div class="dash-sub">当前锁定 {{ stats.locked_now }}</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-label">封禁中 IP</div>
+            <div class="dash-num">{{ stats.banned_ips }}</div>
+        </div>
+    </div>
+
+    <div class="dash-row">
+        <div class="dash-box">
+            <div class="dash-t">登录失败尝试 · 最近 24 小时</div>
+            <div class="dash-chart">
+                {% for item in trend %}
+                    <div class="dash-bar" title="{{ item.label }}:00 失败 {{ item.count }} 次"
+                         style="height: {% widthratio item.count max_count 100 %}%"></div>
+                {% endfor %}
+            </div>
+            <div class="dash-x">
+                <span>00</span><span>03</span><span>06</span><span>09</span>
+                <span>12</span><span>15</span><span>18</span><span>21</span>
+            </div>
+        </div>
+        <div class="dash-box">
+            <div class="dash-t">安全动态</div>
+            {% for kind, text, t in security %}
+                <div class="dash-li">
+                    <span><span class="dash-dot d-{{ kind }}"></span>{{ text }}</span>
+                    <time>{{ t|date:"m-d H:i" }}</time>
+                </div>
+            {% empty %}
+                <p class="p-text">暂无安全事件</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="dash-box">
+        <div class="dash-t">最近事件流</div>
+        {% for t, text in events %}
+            <div class="dash-li">
+                <span>{{ text }}</span>
+                <time>{{ t|date:"m-d H:i" }}</time>
+            </div>
+        {% empty %}
+            <p class="p-text">暂无事件</p>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
