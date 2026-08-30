@@ -72,3 +72,35 @@ class PageVisitMiddlewareTests(TestCase):
         for url in ['/static/anything.css', '/admin/login/', '/panel/', '/captcha/refresh/']:
             self.client.get(url)
         self.assertEqual(PageVisit.objects.count(), 0)
+
+
+class RequestBlockingHeaderTests(TestCase):
+    """缺头检测：Accept 与 Accept-Language 缺一即拦（不能依赖 Connection，平台会注入）"""
+
+    def _middleware(self):
+        from users.middleware import RequestBlockingMiddleware
+        return RequestBlockingMiddleware(lambda r: None)
+
+    def test_curl_like_request_blocked(self):
+        """curl 型请求：伪造 UA + 仅带 Accept，即使平台注入 Connection 也应被拦截"""
+        from django.test import RequestFactory
+        rf = RequestFactory()
+        req = rf.get('/about/', REMOTE_ADDR='8.8.8.8',
+                     HTTP_USER_AGENT='luan-ma',
+                     HTTP_ACCEPT='*/*',
+                     HTTP_CONNECTION='keep-alive')  # 模拟 PythonAnywhere 平台注入
+        resp = self._middleware().process_request(req)
+        self.assertIsNotNone(resp, '缺 Accept-Language 的 curl 请求应被拦截')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_browser_like_request_passes(self):
+        """浏览器型请求：UA + Accept + Accept-Language 齐全应放行"""
+        from django.test import RequestFactory
+        rf = RequestFactory()
+        req = rf.get('/about/', REMOTE_ADDR='8.8.8.8',
+                     HTTP_USER_AGENT='Mozilla/5.0 (Macintosh; Intel Mac OS X) Chrome/120.0',
+                     HTTP_ACCEPT='text/html,application/xhtml+xml',
+                     HTTP_ACCEPT_LANGUAGE='zh-CN,zh;q=0.9')
+        resp = self._middleware().process_request(req)
+        self.assertIsNone(resp, '浏览器请求不应被拦截')
+

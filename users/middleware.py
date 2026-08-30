@@ -186,18 +186,20 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 			)
 		
 		# 2. 高级爬虫检测：验证浏览器必需的请求头
+		#    注意：不能依赖 HTTP_CONNECTION —— PythonAnywhere 等平台的 nginx/uWSGI
+		#    会代为注入 Connection: keep-alive，导致缺失数恒 < 阈值，curl 只需带
+		#    Accept 即可绕过旧版"缺2才拦"逻辑。Accept-Language 浏览器必带、
+		#    而 curl / python-requests 默认不带，且平台不会注入，作为锚点可靠。
 		required_headers = [
 			'HTTP_ACCEPT',           # 浏览器必传：接受的内容类型
-			# 'HTTP_ACCEPT_ENCODING',  # 浏览器必传：gzip/deflate编码支持
 			'HTTP_ACCEPT_LANGUAGE',  # 浏览器必传：语言偏好设置
-			'HTTP_CONNECTION'        # 浏览器必传：连接方式
 		]
-		
-		# 检查是否缺少必需的请求头
-		missing_headers = [header for header in required_headers 
+
+		# 检查是否缺少必需的请求头（任一缺失即视为伪装）
+		missing_headers = [header for header in required_headers
 						  if not request.META.get(header, '').strip()]
-		
-		if len(missing_headers) >= 2:
+
+		if missing_headers:
 			return HttpResponseForbidden(
 				"非法请求：爬虫/脚本伪装浏览器访问，禁止访问！", 
 				status=403, 
