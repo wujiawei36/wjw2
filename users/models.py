@@ -110,7 +110,10 @@ class InviteCode(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return self.code
+        # 脱敏：邀请码是注册凭证，明文 str() 会进入 admin 操作日志（LogEntry.object_repr
+        # 由 str(obj) 生成），而日志页/dashboard 事件流对所有有 view_logentry 权限者可见。
+        # 需要完整码时请用 code 字段本身（如 panel 模板 {{ code.code }}、admin list_display）。
+        return f'邀请码({self.code[:4]}****)' if self.code else '邀请码'
 
     @property
     def is_used(self):

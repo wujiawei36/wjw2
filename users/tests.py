@@ -167,3 +167,43 @@ class InviteCodeAdminTests(TestCase):
             'expires_at_1': self.expires.strftime('%H:%M:%S'),
         })
         self.assertTrue(InviteCode.objects.filter(code='MANUAL-CODE').exists())
+
+
+class InviteCodeLogMaskTests(TestCase):
+    """邀请码不得明文进操作日志：admin 日志页与 panel dashboard 事件流均展示 object_repr"""
+
+    def setUp(self):
+        from django.utils import timezone
+        self.admin = User.objects.create_user(username='inv_log_admin', password='pass-12345678', is_staff=True, is_superuser=True)
+        self.expires = timezone.now() + timezone.timedelta(days=7)
+
+    def _create_code(self):
+        from users.models import InviteCode
+        self.client.force_login(self.admin)
+        self.client.post('/admin/users/invitecode/add/', {
+            'code': '',
+            'expires_at_0': self.expires.strftime('%Y-%m-%d'),
+            'expires_at_1': self.expires.strftime('%H:%M:%S'),
+        })
+        return InviteCode.objects.latest('id')
+
+    def test_log_entry_object_repr_is_masked(self):
+        from django.contrib.admin.models import LogEntry, ADDITION
+        code = self._create_code()
+        entry = LogEntry.objects.filter(content_type__model='invitecode', action_flag=ADDITION).latest('action_time')
+        self.assertNotIn(code.code, entry.object_repr)
+        self.assertIn('****', entry.object_repr)
+
+    def test_observer_dashboard_stream_hides_code(self):
+        from django.contrib.auth.models import Permission
+        code = self._create_code()
+        # 只读观察员：view_logentry + view_ban_ip（cyx 的授权方案）
+        observer = User.objects.create_user(username='inv_observer', password='pass-12345678', is_staff=True)
+        observer.user_permissions.add(Permission.objects.get(codename='view_logentry'))
+        observer.user_permissions.add(Permission.objects.get(codename='view_ban_ip'))
+        self.client.force_login(observer)
+        resp = self.client.get('/panel/dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        # 完整邀请码绝不能出现在 dashboard（事件流含 LogEntry 展示）
+        self.assertNotIn(code.code, body)
