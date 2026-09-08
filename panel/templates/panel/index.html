@@ -19,6 +19,7 @@
 		{% endif %}
 	{% endif %}
 
+	{% if perms.users.view_user or perms.users.view_notification or perms.users.view_ban_ip %}
 	<h2>用户管理</h2>
 	{% if perms.users.view_user %}
 		<a class="a-text" href="/admin/users/customuser">用户</a> <span class="p-text">- 账号/权限/劫持</span><br>
@@ -29,7 +30,9 @@
 	{% if perms.users.view_ban_ip %}
 		<a class="a-text" href="/admin/users/ban_ip">封禁IP</a> <span class="p-text">- 手动封禁/自动封禁记录</span><br>
 	{% endif %}
+	{% endif %}
 
+	{% if perms.sessions.view_session or perms.admin.view_logentry %}
 	<h2>会话与日志</h2>
 	{% if perms.sessions.view_session %}
 		<a class="a-text" href="/admin/sessions/session">会话</a> <span class="p-text">- 在线用户/IP/强制下线</span><br>
@@ -37,7 +40,9 @@
 	{% if perms.admin.view_logentry %}
 		<a class="a-text" href="/admin/admin/logentry">日志记录</a> <span class="p-text">- 后台操作审计(只读)</span><br>
 	{% endif %}
+	{% endif %}
 
+	{% if perms.users.view_invitecode or perms.axes.view_accessattempt or perms.axes.view_accessfailurelog or perms.axes.view_accesslog %}
 	<h2>安全与审计</h2>
 	{% if perms.users.view_invitecode %}
 		<a class="a-text" href="/admin/users/invitecode">邀请码</a> <span class="p-text">- 有效期/使用情况</span><br>
@@ -50,5 +55,6 @@
 	{% endif %}
 	{% if perms.axes.view_accesslog %}
 		<a class="a-text" href="/admin/axes/accesslog/">成功登录记录</a> <span class="p-text">- 谁何时登录(只读)</span><br>
+	{% endif %}
 	{% endif %}
 {% endblock %}
