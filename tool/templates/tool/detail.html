@@ -15,7 +15,14 @@
 <div class="tool-api">
 	<label class="p-text">API Key</label>
 	<input id="api-key" type="password" placeholder="wjw2_live_..." size="45">
-	<p class="h5-text">此工具由后端计算，调用需 API Key。脚本调用：<code>POST /tools/api/{{ tool.slug }}/</code></p>
+	<p class="h5-text">此工具由后端计算，调用需 API Key。</p>
+
+	<h3 class="h3-text">API 调用示例</h3>
+	<p class="h5-text">复制以下命令，把 <code>wjw2_live_你的KEY</code> 换成你的 API Key：</p>
+	<pre class="tool-code"><code>curl -X POST {{ request.scheme }}://{{ request.get_host }}/tools/api/{{ tool.slug }}/ \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: wjw2_live_你的KEY" \
+  -d '{{ tool.api_example|safe }}'</code></pre>
 </div>
 {% endif %}
 

@@ -297,3 +297,40 @@ class MiddlewareApiExemptionTests(TestCase):
         resp = mw.process_request(req)
         self.assertIsNotNone(resp)
         self.assertEqual(resp.status_code, 403)
+
+
+class ApiCurlExampleTests(TestCase):
+    """详情页展示 curl 调用示例；真实 curl 式请求（无浏览器头）不被中间件拦截"""
+
+    def setUp(self):
+        self.full_key, self.key_hash = generate_api_key()
+        ApiKey.objects.create(name='curl', key_hash=self.key_hash)
+
+    def test_all_backend_tools_show_curl_example(self):
+        for slug in ['md5', 'servertime', 'ipinfo']:
+            resp = self.client.get(f'/tools/{slug}/')
+            self.assertEqual(resp.status_code, 200)
+            body = resp.content.decode()
+            self.assertIn('curl -X POST', body)
+            self.assertIn('X-API-Key', body)
+            self.assertIn(f'/tools/api/{slug}/', body)
+
+    def test_curl_like_request_passes_end_to_end(self):
+        # 模拟真实 curl：UA=curl、不带 Accept/Accept-Language、非白名单 IP(8.8.8.8)
+        resp = self.client.post('/tools/api/md5/', data='{"input":"hello"}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key,
+                                HTTP_USER_AGENT='curl/8.0',
+                                REMOTE_ADDR='8.8.8.8')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertEqual(data['data']['md5'], '5d41402abc4b2a76b9719d911017c592')
+
+    def test_curl_like_request_no_key_still_401(self):
+        # 无 Key 时即便带 curl 头也应返回 401（豁免爬虫检测不等于免鉴权）
+        resp = self.client.post('/tools/api/md5/', data='{"input":"hello"}',
+                                content_type='application/json',
+                                HTTP_USER_AGENT='curl/8.0',
+                                REMOTE_ADDR='8.8.8.8')
+        self.assertEqual(resp.status_code, 401)

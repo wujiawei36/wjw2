@@ -59,17 +59,20 @@ TOOLS = [
      'rate_limit': {'window': 60, 'max': 30},   # 工具默认频率：每 60 秒最多 30 次
      'intro': '计算文本的 MD5 哈希。由后端计算，支持脚本通过 API 批量调用。',
      'usage': ['页面使用：先填入 API Key，再输入文本点「执行」', '脚本调用：POST /tools/api/md5/ 携带 X-API-Key'],
-     'related': ['sha']},
+     'related': ['sha'],
+     'api_example': '{"input":"hello"}'},
     {'slug': 'servertime', 'title': '服务器时间', 'desc': '服务器 UTC/本地时间（后端，需 API Key）', 'kind': 'backend',
      'rate_limit': None,                        # 轻量工具，默认不限频
      'intro': '查看服务器当前的 UTC / 本地时间与 Unix 时间戳。',
      'usage': ['填入 API Key', '点击「执行」查看服务器时间'],
-     'related': ['timestamp']},
+     'related': ['timestamp'],
+     'api_example': '{}'},
     {'slug': 'ipinfo', 'title': '我的 IP', 'desc': '查看访客真实 IP（后端，需 API Key）', 'kind': 'backend',
      'rate_limit': None,                        # 轻量工具，默认不限频
      'intro': '查看访客的真实 IP 与 User-Agent（服务器视角）。',
      'usage': ['填入 API Key', '点击「执行」查看 IP 信息'],
-     'related': ['servertime']},
+     'related': ['servertime'],
+     'api_example': '{}'},
 ]
 
 
