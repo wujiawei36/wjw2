@@ -1,15 +1,20 @@
 {% extends 'index/base.html' %}
-{% block head %}<title>工具站 - {{ site_name }}</title>{% endblock %}
+{% load static %}
+{% block head %}
+<title>工具站 - {{ site_name }}</title>
+<link rel="stylesheet" href="{% static 'tool/css/tool.css' %}">
+{% endblock %}
 {% block content %}
 <h2 class="h2-text">工具站</h2>
 <p class="p-text">工具默认在浏览器本地运行，不发请求；标注「API」的工具支持脚本调用（需 API Key）。</p>
-<ul>
-{% for t in tools %}
-	<li class="li-text">
-		<a class="a-text" href="/tools/{{ t.slug }}/">{{ t.title }}</a>
-		<span class="p-text"> - {{ t.desc }}</span>
-		{% if t.kind == 'backend' %}<span class="p-text">（API）</span>{% endif %}
-	</li>
-{% endfor %}
-</ul>
+
+<div class="tool-grid">
+	{% for t in tools %}
+	<div class="tool-card">
+		<a class="tool-card-title" href="/tools/{{ t.slug }}/">{{ t.title }}</a>
+		{% if t.kind == 'backend' %}<span class="tool-card-badge api">API</span>{% endif %}
+		<div class="tool-card-desc">{{ t.desc }}</div>
+	</div>
+	{% endfor %}
+</div>
 {% endblock %}

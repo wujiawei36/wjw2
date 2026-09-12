@@ -1,0 +1,113 @@
+/* 工具站详情页样式（浅色主题，与全站一致） */
+.tool-api {
+	margin: 12px 0 4px;
+}
+.tool-api input {
+	padding: 6px 10px;
+	font-size: 14px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+}
+.tool-api code {
+	background: #f0f0f0;
+	padding: 1px 6px;
+	border-radius: 3px;
+}
+
+.tool-panel {
+	margin: 18px 0;
+	padding: 14px 16px;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	background: #fafafa;
+}
+.tool-panel h3 {
+	margin: 0 0 8px;
+}
+
+.tool-input,
+.tool-output {
+	display: block;
+	width: 100%;
+	max-width: 640px;
+	font-family: "SFMono-Regular", Consolas, Menlo, monospace;
+	font-size: 14px;
+	line-height: 1.5;
+	padding: 8px 10px;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	box-sizing: border-box;
+	margin: 6px 0 4px;
+	resize: vertical;
+}
+.tool-output {
+	background: #f5f5f5;
+	color: #333;
+}
+
+.tool-output-label {
+	font-size: 13px;
+	color: #666;
+	margin-top: 10px;
+}
+
+.tool-run {
+	padding: 6px 22px;
+	font-size: 15px;
+	cursor: pointer;
+	border: 1px solid #007bff;
+	background: #007bff;
+	color: #fff;
+	border-radius: 4px;
+	margin-top: 4px;
+}
+.tool-run:hover {
+	background: #0069d9;
+}
+
+.tool-usage {
+	margin: 8px 0;
+	padding-left: 22px;
+}
+
+/* 工具列表页卡片 */
+.tool-grid {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 16px 0;
+}
+.tool-card {
+	width: 280px;
+	border: 1px solid #e0e0e0;
+	border-radius: 8px;
+	padding: 14px 16px;
+	background: #fff;
+	box-sizing: border-box;
+}
+.tool-card-title {
+	font-size: 18px;
+	font-weight: 600;
+	color: #007bff;
+	text-decoration: none;
+}
+.tool-card-title:hover {
+	text-decoration: underline;
+}
+.tool-card-desc {
+	font-size: 14px;
+	color: #666;
+	margin-top: 4px;
+}
+.tool-card-badge {
+	font-size: 12px;
+	color: #fff;
+	background: #28a745;
+	border-radius: 3px;
+	padding: 1px 6px;
+	margin-left: 6px;
+	vertical-align: middle;
+}
+.tool-card-badge.api {
+	background: #6c757d;
+}

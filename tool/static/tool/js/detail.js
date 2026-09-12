@@ -1,13 +1,7 @@
 (function () {
   var slug = window.__TOOL_SLUG;
   var kind = window.__TOOL_KIND;
-  var input = document.getElementById('tool-input');
-  var output = document.getElementById('tool-output');
-  var runBtn = document.getElementById('tool-run');
-
-  function showError(msg) {
-    output.value = '错误：' + msg;
-  }
+  var container = document.getElementById('tool-container');
 
   function renderResult(d) {
     if (typeof d === 'string') return d;
@@ -16,46 +10,127 @@
     return JSON.stringify(d, null, 2);
   }
 
-  runBtn.addEventListener('click', function () {
-    if (kind === 'frontend') {
-      if (!window.__tool || typeof window.__tool.run !== 'function') {
-        showError('工具脚本未加载');
-        return;
-      }
-      try {
-        var result = window.__tool.run(input.value);
-        if (result && typeof result.then === 'function') {
-          result.then(function (v) { output.value = v; },
-                      function (e) { showError(e.message || String(e)); });
-        } else {
-          output.value = result;
-        }
-      } catch (e) {
-        showError(e.message || String(e));
-      }
-      return;
+  // 渲染一个面板：{ id, title, placeholder, button, outputs, run }
+  function makePanel(panel) {
+    var section = document.createElement('section');
+    section.className = 'tool-panel';
+
+    if (panel.title) {
+      var h = document.createElement('h3');
+      h.className = 'h3-text';
+      h.textContent = panel.title;
+      section.appendChild(h);
     }
 
-    var apiKey = document.getElementById('api-key').value.trim();
-    fetch('/tools/api/' + slug + '/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': apiKey
-      },
-      body: JSON.stringify({ input: input.value })
-    }).then(function (resp) {
-      return resp.json().then(function (data) {
-        return { status: resp.status, data: data };
-      });
-    }).then(function (r) {
-      if (r.data.ok) {
-        output.value = renderResult(r.data.data);
-      } else {
-        showError(r.data.error || ('HTTP ' + r.status));
+    var input = document.createElement('textarea');
+    input.className = 'tool-input';
+    input.rows = 6;
+    input.placeholder = panel.placeholder || '输入内容…';
+    section.appendChild(input);
+
+    var btn = document.createElement('button');
+    btn.className = 'tool-run';
+    btn.textContent = panel.button || '执行';
+    section.appendChild(btn);
+
+    var outputs = panel.outputs && panel.outputs.length
+      ? panel.outputs
+      : [{ key: null, label: null, placeholder: '结果…' }];
+    var outputEls = [];
+    outputs.forEach(function (o) {
+      if (o.label) {
+        var lab = document.createElement('div');
+        lab.className = 'tool-output-label';
+        lab.textContent = o.label;
+        section.appendChild(lab);
       }
-    }).catch(function (e) {
-      showError('请求失败：' + (e.message || e));
+      var ta = document.createElement('textarea');
+      ta.className = 'tool-output';
+      ta.rows = o.rows || 4;
+      ta.readOnly = true;
+      ta.placeholder = o.placeholder || '结果…';
+      section.appendChild(ta);
+      outputEls.push({ key: o.key, el: ta });
     });
-  });
+
+    function writeResult(result) {
+      if (result && typeof result === 'object' && !Array.isArray(result)) {
+        var anyMatched = false;
+        outputEls.forEach(function (o) {
+          if (o.key && result[o.key] !== undefined) {
+            o.el.value = result[o.key];
+            anyMatched = true;
+          }
+        });
+        if (!anyMatched) {
+          outputEls[0].el.value = renderResult(result);
+        }
+      } else {
+        outputEls[0].el.value = renderResult(result);
+      }
+    }
+
+    btn.addEventListener('click', function () {
+      var result;
+      try {
+        result = panel.run(input.value);
+      } catch (e) {
+        outputEls[0].el.value = '错误：' + (e.message || String(e));
+        return;
+      }
+      if (result && typeof result.then === 'function') {
+        result.then(writeResult, function (e) {
+          outputEls[0].el.value = '错误：' + (e.message || String(e));
+        });
+      } else {
+        writeResult(result);
+      }
+    });
+
+    return section;
+  }
+
+  // 后端工具：API Key + 单面板（fetch 到 /tools/api/<slug>/）
+  if (kind === 'backend') {
+    var apiKeyInput = document.getElementById('api-key');
+    container.appendChild(makePanel({
+      id: slug,
+      placeholder: '输入内容…',
+      run: function (input) {
+        var apiKey = apiKeyInput.value.trim();
+        return fetch('/tools/api/' + slug + '/', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': apiKey
+          },
+          body: JSON.stringify({ input: input })
+        }).then(function (resp) {
+          return resp.json().then(function (data) {
+            return { status: resp.status, data: data };
+          });
+        }).then(function (r) {
+          if (r.data.ok) return renderResult(r.data.data);
+          throw new Error(r.data.error || ('HTTP ' + r.status));
+        });
+      }
+    }));
+    return;
+  }
+
+  // 前端工具：声明式多面板，或默认单面板（run）
+  var tool = window.__tool;
+  if (tool && tool.panels) {
+    tool.panels.forEach(function (p) {
+      container.appendChild(makePanel(p));
+    });
+  } else if (tool && typeof tool.run === 'function') {
+    container.appendChild(makePanel({
+      id: slug,
+      placeholder: '输入内容…',
+      run: tool.run
+    }));
+  } else {
+    container.textContent = '工具脚本未加载';
+  }
 })();

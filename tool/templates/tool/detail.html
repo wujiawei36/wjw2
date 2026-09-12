@@ -1,29 +1,43 @@
 {% extends 'index/base.html' %}
 {% load static %}
-{% block head %}<title>{{ tool.title }} - {{ site_name }}</title>{% endblock %}
+{% block head %}
+<title>{{ tool.title }} - {{ site_name }}</title>
+<link rel="stylesheet" href="{% static 'tool/css/tool.css' %}">
+{% endblock %}
 {% block content %}
+
+<p class="p-text"><a class="a-text" href="/tools/">返回工具列表</a></p>
+
 <h2 class="h2-text">{{ tool.title }}</h2>
-<p class="p-text">{{ tool.desc }}</p>
+<p class="p-text">{{ tool.intro }}</p>
 
 {% if tool.kind == 'backend' %}
-<p class="p-text">此工具由后端计算，调用接口需要 API Key。</p>
-<div>
+<div class="tool-api">
 	<label class="p-text">API Key</label>
 	<input id="api-key" type="password" placeholder="wjw2_live_..." size="45">
+	<p class="h5-text">此工具由后端计算，调用需 API Key。脚本调用：<code>POST /tools/api/{{ tool.slug }}/</code></p>
 </div>
 {% endif %}
 
-<div>
-	<textarea id="tool-input" rows="8" cols="60" placeholder="输入内容…"></textarea>
-</div>
-<div>
-	<button id="tool-run">执行</button>
-</div>
-<div>
-	<textarea id="tool-output" rows="8" cols="60" readonly placeholder="结果…"></textarea>
-</div>
+<div id="tool-container"></div>
 
-<p class="p-text"><a class="a-text" href="/tools/">← 返回工具列表</a></p>
+{% if tool.usage %}
+<h3 class="h3-text">操作说明</h3>
+<ol class="tool-usage">
+	{% for step in tool.usage %}
+	<li class="li-text">{{ step }}</li>
+	{% endfor %}
+</ol>
+{% endif %}
+
+{% if related %}
+<h3 class="h3-text">相关工具</h3>
+<p class="p-text">
+	{% for r in related %}
+	<a class="a-text" href="/tools/{{ r.slug }}/">{{ r.title }}</a>{% if not forloop.last %}<span class="p-text"> · </span>{% endif %}
+	{% endfor %}
+</p>
+{% endif %}
 
 <script>
 	window.__TOOL_SLUG = '{{ tool.slug }}';

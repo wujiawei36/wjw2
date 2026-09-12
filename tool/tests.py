@@ -212,6 +212,51 @@ class ToolRateLimitTests(TestCase):
             self.assertEqual(self._post('servertime', key=self.full_key).status_code, 200)
 
 
+class ToolDetailPageTests(TestCase):
+    """详情页美化：返回链接(去箭头、在内容之前)、介绍、操作说明、相关工具"""
+
+    def test_back_link_no_arrow_and_positioned_before_content(self):
+        resp = self.client.get('/tools/json/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn('返回工具列表', body)
+        self.assertNotIn('← 返回工具列表', body)
+        # 返回链接在工具操作区（tool-container）之前
+        self.assertLess(body.index('返回工具列表'), body.index('tool-container'))
+
+    def test_intro_usage_related_rendered(self):
+        resp = self.client.get('/tools/json/')
+        body = resp.content.decode()
+        # 介绍
+        self.assertIn('将压缩成一行的 JSON 展开', body)
+        # 操作说明
+        self.assertIn('操作说明', body)
+        self.assertIn('把 JSON 文本粘贴到输入框', body)
+        # 相关工具（title 而非 slug）
+        self.assertIn('相关工具', body)
+        self.assertIn('正则测试', body)
+        self.assertIn('文本去重', body)
+
+    def test_multipanel_tool_loads_its_js(self):
+        # 双向/多输出工具（base64 等）仍是 frontend，加载对应 JS
+        for slug in ['base64', 'timestamp', 'color', 'number', 'sha']:
+            resp = self.client.get(f'/tools/{slug}/')
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(f'tool/js/{slug}.js', resp.content.decode())
+
+    def test_backend_detail_keeps_api_key_and_back_link(self):
+        resp = self.client.get('/tools/md5/')
+        body = resp.content.decode()
+        self.assertIn('api-key', body)
+        self.assertIn('返回工具列表', body)
+
+    def test_index_uses_cards(self):
+        resp = self.client.get('/tools/')
+        body = resp.content.decode()
+        self.assertIn('tool-card', body)
+        self.assertIn('tool-card-title', body)
+
+
 class ApiKeyAdminTests(TestCase):
     """后台新建 API Key：留空 key_hash 自动生成，默认激活"""
 

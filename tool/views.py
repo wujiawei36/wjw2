@@ -29,6 +29,11 @@ def tool_detail(request, slug):
     if tool['kind'] == 'frontend':
         # 用 static() 生成带 manifest hash 的完整静态 URL（生产 manifest 存储要求精确文件名）
         context['tool_js'] = static(f"tool/js/{slug}.js")
+    # related：把 slug 转成 {slug, title} 供模板渲染链接
+    context['related'] = [
+        {'slug': r, 'title': get_tool(r)['title']}
+        for r in tool.get('related', []) if get_tool(r)
+    ]
     return render(request, 'tool/detail.html', context)
 
 
