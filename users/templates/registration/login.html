@@ -5,28 +5,28 @@
 {% endblock %}
 
 {% block content %}
-    <h1 class="h1-text">
+    <h1 class="h1-text" data-page-node-id="MGkLtVS5WEDQIJ4GXX9PWz">
         登录
     </h1>
-    <form action="" method="post" name="login_form" onsubmit="return validateForm()">
+    <form action="" method="post" name="login_form" onsubmit="return validateForm()" data-page-node-id="Dtj6a0JUAyxxBCsOQhstVg">
         {% csrf_token %}
-        <input type="hidden" name="required">
+        <input type="hidden" name="required" data-page-node-id="2SSFrw3OE3un5LRJFFFmAy">
         用户名或用户编号:
-        <input type="text" name="username" required>
-        <br>
+        <input type="text" name="username" required data-page-node-id="FE8VKjuIxQt5M2eq6c3LXC">
+        <br data-page-node-id="sFeaKeXLFCsIeZ5I1zcgBI">
         密码:
-        <input type="password" name="password" required>
+        <input type="password" name="password" required data-page-node-id="KIu4P5ISLScFQ6PmG0pHQU">
 
-        <br>
+        <br data-page-node-id="ZBOJF8zdGZzcUUkC5Jf33h">
         图形验证码:
-        <input type="text" id="captcha" name="captcha" required>
-        <img src="{{ captcha_image_url }}" alt="验证码">
-        <br>
-        <input type="hidden" id="captcha_key" name="captcha_key" value="{{ captcha_key }}" autocomplete="off">
+        <input type="text" id="captcha" name="captcha" required data-page-node-id="XDAv8aikpmcBBVzrBiteez">
+        <img src="{{ captcha_image_url }}" alt="验证码" data-page-node-id="DkPgdr5FH0um6VXG6Ew0Hp">
+        <br data-page-node-id="NA1kVQeSg0RCDriqAi38Q6">
+        <input type="hidden" id="captcha_key" name="captcha_key" value="{{ captcha_key }}" autocomplete="off" data-page-node-id="IXmUc7AnebXiacHxDjh8Kh">
 
-        <input type="submit" value="登录">
+        <input type="submit" value="登录" data-page-node-id="4pcg8R7noeStXwb8xQucKb">
     </form>
-    <p class="p-text">没有账号？<a class="a-text" href="{% url 'users:register' %}">立即注册</a></p>
+    <p class="p-text" data-page-node-id="On5BhCBInOZFHxHRWqt4EU">没有账号？<a class="a-text" href="{% url 'users:register' %}" data-page-node-id="YBTDkGC8Ck5QEvSz9WWS4F">立即注册</a></p>
     <script>
         function validateForm()
         {
@@ -37,7 +37,7 @@
         }
     </script>
     {% if errors %}
-        <p class="p-text">
+        <p class="p-text" data-page-node-id="fWFofJgPwjGWbCJaHEh7Aa">
             错误:{{ errors }}
         </p>
     {% endif %}
