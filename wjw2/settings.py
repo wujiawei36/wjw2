@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'users',
     'panel',
     'index',
+    'tool',  # 工具站（纯前端工具 + API Key 鉴权的后端接口）
     'hijack',  # 核心功能
     'hijack.contrib.admin',  # (可选) 在Admin中集成劫持按钮[reference:12]
     'axes',  # 登录防爆破（登录失败锁定）

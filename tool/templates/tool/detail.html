@@ -1,0 +1,36 @@
+{% extends 'index/base.html' %}
+{% load static %}
+{% block head %}<title>{{ tool.title }} - {{ site_name }}</title>{% endblock %}
+{% block content %}
+<h2 class="h2-text">{{ tool.title }}</h2>
+<p class="p-text">{{ tool.desc }}</p>
+
+{% if tool.kind == 'backend' %}
+<p class="p-text">此工具由后端计算，调用接口需要 API Key。</p>
+<div>
+	<label class="p-text">API Key</label>
+	<input id="api-key" type="password" placeholder="wjw2_live_..." size="45">
+</div>
+{% endif %}
+
+<div>
+	<textarea id="tool-input" rows="8" cols="60" placeholder="输入内容…"></textarea>
+</div>
+<div>
+	<button id="tool-run">执行</button>
+</div>
+<div>
+	<textarea id="tool-output" rows="8" cols="60" readonly placeholder="结果…"></textarea>
+</div>
+
+<p class="p-text"><a class="a-text" href="/tools/">← 返回工具列表</a></p>
+
+<script>
+	window.__TOOL_SLUG = '{{ tool.slug }}';
+	window.__TOOL_KIND = '{{ tool.kind }}';
+</script>
+{% if tool_js %}
+<script src="{{ tool_js }}"></script>
+{% endif %}
+<script src="{% static 'tool/js/detail.js' %}"></script>
+{% endblock %}

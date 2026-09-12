@@ -1,0 +1,15 @@
+{% extends 'index/base.html' %}
+{% block head %}<title>工具站 - {{ site_name }}</title>{% endblock %}
+{% block content %}
+<h2 class="h2-text">工具站</h2>
+<p class="p-text">工具默认在浏览器本地运行，不发请求；标注「API」的工具支持脚本调用（需 API Key）。</p>
+<ul>
+{% for t in tools %}
+	<li class="li-text">
+		<a class="a-text" href="/tools/{{ t.slug }}/">{{ t.title }}</a>
+		<span class="p-text"> - {{ t.desc }}</span>
+		{% if t.kind == 'backend' %}<span class="p-text">（API）</span>{% endif %}
+	</li>
+{% endfor %}
+</ul>
+{% endblock %}

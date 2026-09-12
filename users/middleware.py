@@ -172,11 +172,14 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 
 		# ==================== 爬虫检测 ====================
 		user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+		# API 接口以 API Key 鉴权（浏览器头不作为身份依据），跳过爬虫检测；
+		# 但保留下方频率限流，防止后端被刷爆。
+		is_api = request.path_info.startswith('/tools/api/')
 		
 		# 1. 基础爬虫检测：检查常见爬虫User-Agent
-		if not user_agent or any(bot in user_agent for bot in [
+		if not is_api and (not user_agent or any(bot in user_agent for bot in [
 			'python-requests', 'curl', 'wget', 'scrapy', 'bot', 'spider'
-		]):
+		])):
 			logger.warning('UA_BLOCK IP[%s] UA黑名单拦截 path=%s UA=[%s]',
 			               ip, request.path_info, user_agent[:200])
 			return HttpResponseForbidden(
@@ -199,7 +202,7 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 		missing_headers = [header for header in required_headers
 						  if not request.META.get(header, '').strip()]
 
-		if missing_headers:
+		if not is_api and missing_headers:
 			logger.warning('HEADER_BLOCK IP[%s] 缺头拦截 path=%s missing=%s UA=[%s]',
 			               ip, request.path_info, missing_headers, user_agent[:200])
 			return HttpResponseForbidden(
@@ -209,7 +212,7 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 			)
 
 		# 3. 无头浏览器检测：识别自动化工具
-		if any(headless_tool in user_agent for headless_tool in [
+		if not is_api and any(headless_tool in user_agent for headless_tool in [
 			'headless', 'selenium', 'playwright', 'puppeteer', 'phantomjs'
 		]):
 			logger.warning('HEADLESS_BLOCK IP[%s] 无头浏览器拦截 path=%s UA=[%s]',
@@ -287,7 +290,7 @@ class PageVisitMiddleware(MiddlewareMixin):
 	  因此 PageVisit 表只保留今日数据即可（cleanup_page_visits --days 1 清理）。
 	- 任何异常静默降级，绝不影响正常请求。
 	"""
-	EXCLUDE_PREFIXES = ('/static/', '/admin/', '/panel/', '/captcha/')
+	EXCLUDE_PREFIXES = ('/static/', '/admin/', '/panel/', '/captcha/', '/tools/api/')
 
 	def process_response(self, request, response):
 		try:

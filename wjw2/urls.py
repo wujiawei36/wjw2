@@ -27,5 +27,6 @@ urlpatterns = [
     path('', include('index.urls')),
     path('user/', include('users.urls')),
     path('panel/', include('panel.urls')),
+    path('tools/', include('tool.urls')),
     path('accounts/profile/', lambda request: redirect('/')),
 ]

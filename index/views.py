@@ -21,6 +21,7 @@ def robots(request):
         'Disallow: /user/\n'
         'Disallow: /captcha/\n'
         'Disallow: /hijack/\n'
+        'Disallow: /tools/api/\n'
         '\n'
         'Allow: /\n'
     )
