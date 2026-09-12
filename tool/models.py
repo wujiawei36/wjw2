@@ -38,6 +38,11 @@ class ApiKey(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True, help_text='过期时间（空=永不过期）')
     quota = models.PositiveIntegerField(null=True, blank=True, help_text='调用额度上限（空=不限）')
     used = models.PositiveIntegerField(default=0, help_text='已使用次数')
+    rate_per_minute = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text='频率上限(次/分钟)：留空=跟随工具默认；0=不限频；正整数=覆盖工具默认',
+    )
+    unlimited = models.BooleanField(default=False, help_text='勾选后该 Key 不受额度和频率限制（无限次使用）')
     allowed_slugs = models.TextField(blank=True, default='', help_text='允许的工具 slug，逗号分隔（空=全部）')
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
@@ -58,14 +63,34 @@ class ApiKey(models.Model):
         return [s.strip() for s in self.allowed_slugs.split(',') if s.strip()]
 
     def validate(self, slug):
-        """校验该 Key 是否可用于指定工具，返回 (ok, error_code)。"""
+        """校验该 Key 是否可用于指定工具，返回 (ok, error_code)。
+
+        unlimited=True 只豁免「额度 + 频率」，不豁免 is_active / 过期 / 工具白名单
+        （吊销与过期是硬性安全，绝不能因 unlimited 被绕过）。
+        """
         if not self.is_active:
             return False, 'KEY_DISABLED'
         if self.expires_at and self.expires_at <= timezone.now():
             return False, 'KEY_EXPIRED'
-        if self.quota is not None and self.used >= self.quota:
+        if not self.unlimited and self.quota is not None and self.used >= self.quota:
             return False, 'QUOTA_EXCEEDED'
         allowed = self.allowed_list()
         if allowed and slug not in allowed:
             return False, 'SLUG_NOT_ALLOWED'
         return True, None
+
+    def rate_limit_for(self, tool_rate_limit):
+        """返回该 Key 对某工具的有效频率 (window, max_count)；(None, None) 表示不限频。
+
+        - unlimited=True            → 不限频（None, None）
+        - rate_per_minute == 0      → 不限频（None, None）
+        - rate_per_minute 正整数    → 覆盖工具默认 (60, N)
+        - rate_per_minute 留空      → 跟随工具默认 tool_rate_limit（None 则不限频）
+        """
+        if self.unlimited or self.rate_per_minute == 0:
+            return None, None
+        if self.rate_per_minute:
+            return 60, self.rate_per_minute
+        if tool_rate_limit:
+            return tool_rate_limit['window'], tool_rate_limit['max']
+        return None, None

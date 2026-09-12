@@ -5,11 +5,13 @@ from .models import ApiKey, generate_api_key
 
 @admin.register(ApiKey)
 class ApiKeyAdmin(admin.ModelAdmin):
-    list_display = ['name', 'masked', 'is_active', 'used', 'quota', 'expires_at', 'last_used_at']
-    list_filter = ['is_active']
+    list_display = ['name', 'masked', 'is_active', 'unlimited', 'used', 'quota',
+                    'rate_per_minute', 'expires_at', 'last_used_at']
+    list_filter = ['is_active', 'unlimited']
     search_fields = ['name']
     readonly_fields = ['used', 'created_at', 'last_used_at']
-    fields = ['name', 'owner', 'is_active', 'expires_at', 'quota', 'allowed_slugs']
+    fields = ['name', 'owner', 'is_active', 'unlimited', 'expires_at', 'quota',
+              'rate_per_minute', 'allowed_slugs']
 
     @admin.display(description='Key（脱敏）')
     def masked(self, obj):

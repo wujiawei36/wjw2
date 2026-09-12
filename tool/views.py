@@ -11,6 +11,7 @@ from django.views.decorators.http import require_POST
 
 from utils.get_ip import get_ip
 from .models import ApiKey, hash_api_key
+from .ratelimit import allow as rate_allow
 from .registry import TOOLS, get_tool
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,20 @@ def tool_api(request, slug):
     if not ok:
         _audit(request, slug, api_key, err)
         return JsonResponse({'ok': False, 'error': err}, status=403)
+
+    # 频率限流（Key 维度 + IP 维度，双保险）
+    window, max_c = api_key.rate_limit_for(tool.get('rate_limit'))
+    if max_c:
+        ip = get_ip(request)
+        for dim_key in (f'{slug}:key:{api_key.key_hash}', f'{slug}:ip:{ip}'):
+            ok, retry = rate_allow(dim_key, window, max_c)
+            if not ok:
+                _audit(request, slug, api_key, 'RATE_LIMITED')
+                return JsonResponse(
+                    {'ok': False, 'error': 'RATE_LIMITED'},
+                    status=429,
+                    headers={'Retry-After': str(retry)},
+                )
 
     try:
         body = json.loads(request.body.decode('utf-8') or '{}')

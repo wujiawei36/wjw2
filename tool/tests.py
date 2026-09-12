@@ -147,6 +147,71 @@ class ToolApiTests(TestCase):
         self.assertEqual(resp.json()['error'], 'NOT_API_TOOL')
 
 
+class ApiKeyRateLimitModelTests(TestCase):
+    """rate_limit_for 的优先级：工具默认 → Key 覆盖 → Key 豁免"""
+
+    def _key(self, **kwargs):
+        return ApiKey(name='t', key_hash='x' * 64, **kwargs)
+
+    def test_unlimited_no_limit(self):
+        self.assertEqual(self._key(unlimited=True).rate_limit_for({'window': 60, 'max': 30}), (None, None))
+
+    def test_zero_no_limit(self):
+        self.assertEqual(self._key(rate_per_minute=0).rate_limit_for({'window': 60, 'max': 30}), (None, None))
+
+    def test_key_overrides_tool_default(self):
+        self.assertEqual(self._key(rate_per_minute=5).rate_limit_for({'window': 60, 'max': 30}), (60, 5))
+
+    def test_follows_tool_default(self):
+        self.assertEqual(self._key().rate_limit_for({'window': 60, 'max': 30}), (60, 30))
+
+    def test_no_config_no_limit(self):
+        self.assertEqual(self._key().rate_limit_for(None), (None, None))
+
+
+class ToolRateLimitTests(TestCase):
+    """按 Key×工具 频率限流：429 RATE_LIMITED + unlimited 豁免 quota"""
+
+    def setUp(self):
+        from .ratelimit import reset
+        reset()  # 进程级计数，测试间必须隔离
+        self.full_key, self.key_hash = generate_api_key()
+
+    def _post(self, slug, payload='{}', key=None):
+        headers = {'HTTP_X_API_KEY': key} if key else {}
+        return self.client.post(f'/tools/api/{slug}/', data=payload,
+                                content_type='application/json', **headers)
+
+    def test_unlimited_skips_quota(self):
+        # quota=0 本应 QUOTA_EXCEEDED，但 unlimited=True 豁免
+        key = ApiKey.objects.create(name='u', key_hash='u' * 64, quota=0, unlimited=True)
+        ok, err = key.validate('md5')
+        self.assertTrue(ok)
+        self.assertIsNone(err)
+
+    def test_unlimited_still_checks_disabled(self):
+        # unlimited 不豁免吊销（硬性安全）
+        key = ApiKey.objects.create(name='u', key_hash='u' * 64, is_active=False, unlimited=True)
+        ok, err = key.validate('md5')
+        self.assertFalse(ok)
+        self.assertEqual(err, 'KEY_DISABLED')
+
+    def test_rate_per_minute_overrides_tool_default(self):
+        # servertime 工具默认不限频，rate_per_minute=2 则按 Key 覆盖为 2 次/分钟
+        ApiKey.objects.create(name='r', key_hash=self.key_hash, rate_per_minute=2)
+        for _ in range(2):
+            self.assertEqual(self._post('servertime', key=self.full_key).status_code, 200)
+        resp = self._post('servertime', key=self.full_key)
+        self.assertEqual(resp.status_code, 429)
+        self.assertEqual(resp.json()['error'], 'RATE_LIMITED')
+        self.assertIn('Retry-After', resp.headers)
+
+    def test_rate_per_minute_zero_no_limit(self):
+        ApiKey.objects.create(name='r', key_hash=self.key_hash, rate_per_minute=0)
+        for _ in range(5):
+            self.assertEqual(self._post('servertime', key=self.full_key).status_code, 200)
+
+
 class ApiKeyAdminTests(TestCase):
     """后台新建 API Key：留空 key_hash 自动生成，默认激活"""
 
