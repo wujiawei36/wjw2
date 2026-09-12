@@ -12,6 +12,7 @@ from django.conf import settings
 from datetime import timedelta
 from axes.models import AccessFailureLog, AccessLog, AccessAttempt
 from users.models import InviteCode, Ban_IP, PageVisit, create_invite_code
+from tool.models import ApiKey, generate_api_key
 from io import StringIO
 import sys
 import logging
@@ -95,6 +96,25 @@ def invite_codes(request):
         })
 
     return render(request, 'panel/invite_codes.html')
+
+
+@login_required
+@staff_member_required
+@user_passes_test(can_develop, login_url='/panel')
+def api_keys(request):
+    """生成 API Key 快捷页：明文 key 只在生成后展示一次，库中仅存加盐哈希"""
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip() or '未命名'
+        unlimited = request.POST.get('unlimited') == 'on'
+        full_key, key_hash = generate_api_key()
+        key = ApiKey.objects.create(
+            name=name, key_hash=key_hash, owner=request.user, unlimited=unlimited,
+        )
+        logger.info('API_KEY_GENERATED 用户[%s](id=%s) 生成 API Key[%s] unlimited=%s',
+                    request.user.username, request.user.id, key.masked(), unlimited)
+        return render(request, 'panel/api_keys.html', {'full_key': full_key, 'key': key})
+
+    return render(request, 'panel/api_keys.html')
 
 
 @login_required
