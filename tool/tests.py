@@ -60,6 +60,25 @@ class ToolPagesTests(TestCase):
         resp = self.client.get('/tools/nonexistent/')
         self.assertEqual(resp.status_code, 404)
 
+    def test_index_lists_second_batch_tools(self):
+        resp = self.client.get('/tools/')
+        body = resp.content.decode()
+        for name in ['SHA 哈希', '颜色转换', '进制转换', '正则测试',
+                     '文本去重', '服务器时间', '我的 IP']:
+            self.assertIn(name, body)
+
+    def test_frontend_tools_detail_load_js(self):
+        for slug in ['sha', 'color', 'number', 'regex', 'text']:
+            resp = self.client.get(f'/tools/{slug}/')
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn(f'tool/js/{slug}.js', resp.content.decode())
+
+    def test_backend_tools_detail_have_api_key_field(self):
+        for slug in ['servertime', 'ipinfo']:
+            resp = self.client.get(f'/tools/{slug}/')
+            self.assertEqual(resp.status_code, 200)
+            self.assertIn('api-key', resp.content.decode())
+
 
 class ToolApiTests(TestCase):
     """后端工具 API：API Key 鉴权 + MD5 计算"""
@@ -95,6 +114,37 @@ class ToolApiTests(TestCase):
         key = ApiKey.objects.get(key_hash=self.key_hash)
         self.assertEqual(key.used, 1)
         self.assertIsNotNone(key.last_used_at)
+
+    def test_servertime_with_valid_key(self):
+        resp = self.client.post('/tools/api/servertime/', data='{}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertIn('UTC:', data['data']['text'])
+
+    def test_ipinfo_with_valid_key(self):
+        resp = self.client.post('/tools/api/ipinfo/', data='{}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertIn('IP:', data['data']['text'])
+
+    def test_servertime_without_key(self):
+        resp = self.client.post('/tools/api/servertime/', data='{}',
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 401)
+
+    def test_frontend_tool_not_api(self):
+        # 纯前端工具没有 API 端点，调其 API 应返回 NOT_API_TOOL
+        resp = self.client.post('/tools/api/json/', data='{}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'NOT_API_TOOL')
 
 
 class ApiKeyAdminTests(TestCase):

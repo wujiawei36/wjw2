@@ -9,6 +9,13 @@
     output.value = '错误：' + msg;
   }
 
+  function renderResult(d) {
+    if (typeof d === 'string') return d;
+    if (d && d.text !== undefined) return d.text;
+    if (d && d.md5 !== undefined) return d.md5;
+    return JSON.stringify(d, null, 2);
+  }
+
   runBtn.addEventListener('click', function () {
     if (kind === 'frontend') {
       if (!window.__tool || typeof window.__tool.run !== 'function') {
@@ -16,7 +23,13 @@
         return;
       }
       try {
-        output.value = window.__tool.run(input.value);
+        var result = window.__tool.run(input.value);
+        if (result && typeof result.then === 'function') {
+          result.then(function (v) { output.value = v; },
+                      function (e) { showError(e.message || String(e)); });
+        } else {
+          output.value = result;
+        }
       } catch (e) {
         showError(e.message || String(e));
       }
@@ -37,8 +50,7 @@
       });
     }).then(function (r) {
       if (r.data.ok) {
-        var d = r.data.data;
-        output.value = (d.md5 !== undefined) ? d.md5 : JSON.stringify(d);
+        output.value = renderResult(r.data.data);
       } else {
         showError(r.data.error || ('HTTP ' + r.status));
       }

@@ -80,6 +80,19 @@ def tool_api(request, slug):
 
     if slug == 'md5':
         data = {'md5': hashlib.md5(text.encode('utf-8')).hexdigest()}
+    elif slug == 'servertime':
+        now = timezone.now()
+        local = timezone.localtime(now)
+        data = {'text': (
+            'UTC: ' + now.strftime('%Y-%m-%d %H:%M:%S') + '\n'
+            '本地: ' + local.strftime('%Y-%m-%d %H:%M:%S') + ' (' + str(local.tzinfo) + ')\n'
+            'Unix 时间戳(秒): ' + str(int(now.timestamp()))
+        )}
+    elif slug == 'ipinfo':
+        data = {'text': (
+            'IP: ' + (get_ip(request) or '未知') + '\n'
+            'User-Agent: ' + request.META.get('HTTP_USER_AGENT', '')
+        )}
     else:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 
