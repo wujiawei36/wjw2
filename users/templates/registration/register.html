@@ -34,6 +34,7 @@
         <input type="hidden" id="captcha_key" name="captcha_key" value="{{ captcha_key }}" autocomplete="off">
         <input type="submit" value="注册">
     </form>
+    <p class="p-text">已有账号？<a class="a-text" href="{% url 'users:login' %}">直接登录</a></p>
     <script>
         function validateForm()
         {
