@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import json
 import logging
@@ -61,12 +62,14 @@ def _audit(request, slug, api_key, status):
 @csrf_exempt
 @require_POST
 def tool_api(request, slug):
-    """后端工具 API 端点：API Key 鉴权 → 限流 → 后端计算 → 审计。"""
+    """工具 API 端点：API Key 鉴权 → 限流 → 后端计算 → 审计。
+
+    所有工具（frontend/backend）均开放 API：浏览器用户走前端直算无需 Key，
+    脚本通过本端点调用需携带 X-API-Key。
+    """
     tool = get_tool(slug)
     if tool is None:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
-    if tool['kind'] != 'backend':
-        return JsonResponse({'ok': False, 'error': 'NOT_API_TOOL'}, status=400)
 
     api_key, err = _resolve_api_key(request)
     if err:
@@ -113,6 +116,34 @@ def tool_api(request, slug):
             'IP: ' + (get_ip(request) or '未知') + '\n'
             'User-Agent: ' + request.META.get('HTTP_USER_AGENT', '')
         )}
+    elif slug == 'json':
+        try:
+            obj = json.loads(text)
+        except json.JSONDecodeError as e:
+            return JsonResponse(
+                {'ok': False, 'error': 'BAD_PARAM', 'detail': f'JSON 解析失败：{e}'}, status=400)
+        data = {'text': json.dumps(obj, indent=2, ensure_ascii=False)}
+    elif slug == 'sha':
+        raw = text.encode('utf-8')
+        data = {
+            'sha1': hashlib.sha1(raw).hexdigest(),
+            'sha256': hashlib.sha256(raw).hexdigest(),
+            'sha384': hashlib.sha384(raw).hexdigest(),
+            'sha512': hashlib.sha512(raw).hexdigest(),
+        }
+    elif slug == 'base64':
+        mode = str(body.get('mode', 'encode')).lower()
+        if mode == 'encode':
+            data = {'text': base64.b64encode(text.encode('utf-8')).decode('ascii')}
+        elif mode == 'decode':
+            try:
+                data = {'text': base64.b64decode(text.encode('ascii')).decode('utf-8')}
+            except Exception as e:
+                return JsonResponse(
+                    {'ok': False, 'error': 'BAD_PARAM', 'detail': f'Base64 解码失败：{e}'}, status=400)
+        else:
+            return JsonResponse(
+                {'ok': False, 'error': 'BAD_PARAM', 'detail': 'mode 需为 encode 或 decode'}, status=400)
     else:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 

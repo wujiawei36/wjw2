@@ -50,11 +50,13 @@ class ToolPagesTests(TestCase):
         body = resp.content.decode()
         self.assertIn('tool/js/json.js', body)
 
-    def test_backend_tool_detail_has_api_key_field(self):
+    def test_backend_tool_detail_has_no_api_key_input(self):
+        # API 仅向脚本开放：详情页不提供 API Key 输入框，只展示 curl 示例
         resp = self.client.get('/tools/md5/')
         self.assertEqual(resp.status_code, 200)
         body = resp.content.decode()
-        self.assertIn('api-key', body)
+        self.assertNotIn('api-key', body)
+        self.assertIn('curl -X POST', body)
 
     def test_unknown_tool_404(self):
         resp = self.client.get('/tools/nonexistent/')
@@ -73,11 +75,13 @@ class ToolPagesTests(TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertIn(f'tool/js/{slug}.js', resp.content.decode())
 
-    def test_backend_tools_detail_have_api_key_field(self):
+    def test_backend_tools_detail_have_no_api_key_input(self):
         for slug in ['servertime', 'ipinfo']:
             resp = self.client.get(f'/tools/{slug}/')
             self.assertEqual(resp.status_code, 200)
-            self.assertIn('api-key', resp.content.decode())
+            body = resp.content.decode()
+            self.assertNotIn('api-key', body)
+            self.assertIn('curl -X POST', body)
 
 
 class ToolApiTests(TestCase):
@@ -138,13 +142,54 @@ class ToolApiTests(TestCase):
                                 content_type='application/json')
         self.assertEqual(resp.status_code, 401)
 
-    def test_frontend_tool_not_api(self):
-        # 纯前端工具没有 API 端点，调其 API 应返回 NOT_API_TOOL
-        resp = self.client.post('/tools/api/json/', data='{}',
+    def test_json_api_formats(self):
+        # 前端工具同样开放 API（脚本调用）
+        resp = self.client.post('/tools/api/json/', data='{"input":"[1,2,3]"}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertIn('1', data['data']['text'])
+        self.assertIn('2', data['data']['text'])
+
+    def test_json_api_bad_json(self):
+        resp = self.client.post('/tools/api/json/', data='{"input":"not json"}',
                                 content_type='application/json',
                                 HTTP_X_API_KEY=self.full_key)
         self.assertEqual(resp.status_code, 400)
-        self.assertEqual(resp.json()['error'], 'NOT_API_TOOL')
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_sha_api_returns_four_hashes(self):
+        resp = self.client.post('/tools/api/sha/', data='{"input":"abc"}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['sha1'], 'a9993e364706816aba3e25717850c26c9cd0d89d')
+        self.assertEqual(data['sha256'], 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad')
+        self.assertIn('sha384', data)
+        self.assertIn('sha512', data)
+
+    def test_base64_api_encode_decode(self):
+        resp = self.client.post('/tools/api/base64/', data='{"input":"hello","mode":"encode"}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['data']['text'], 'aGVsbG8=')
+
+        resp = self.client.post('/tools/api/base64/', data='{"input":"aGVsbG8=","mode":"decode"}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['data']['text'], 'hello')
+
+    def test_base64_api_bad_mode(self):
+        resp = self.client.post('/tools/api/base64/', data='{"input":"x","mode":"bad"}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
 
 
 class ApiKeyRateLimitModelTests(TestCase):
@@ -244,11 +289,12 @@ class ToolDetailPageTests(TestCase):
             self.assertEqual(resp.status_code, 200)
             self.assertIn(f'tool/js/{slug}.js', resp.content.decode())
 
-    def test_backend_detail_keeps_api_key_and_back_link(self):
+    def test_backend_detail_no_api_key_input_has_back_link(self):
         resp = self.client.get('/tools/md5/')
         body = resp.content.decode()
-        self.assertIn('api-key', body)
+        self.assertNotIn('api-key', body)
         self.assertIn('返回工具列表', body)
+        self.assertIn('curl -X POST', body)
 
     def test_index_uses_cards(self):
         resp = self.client.get('/tools/')
@@ -314,6 +360,16 @@ class ApiCurlExampleTests(TestCase):
             self.assertIn('curl -X POST', body)
             self.assertIn('X-API-Key', body)
             self.assertIn(f'/tools/api/{slug}/', body)
+
+    def test_frontend_tools_also_show_curl_example(self):
+        # 前端工具：保留前端直算面板，同时展示 API curl 示例，且无 Key 输入框
+        for slug in ['json', 'sha', 'base64']:
+            resp = self.client.get(f'/tools/{slug}/')
+            self.assertEqual(resp.status_code, 200)
+            body = resp.content.decode()
+            self.assertIn('curl -X POST', body)
+            self.assertIn(f'/tools/api/{slug}/', body)
+            self.assertNotIn('api-key', body)
 
     def test_curl_like_request_passes_end_to_end(self):
         # 模拟真实 curl：UA=curl、不带 Accept/Accept-Language、非白名单 IP(8.8.8.8)

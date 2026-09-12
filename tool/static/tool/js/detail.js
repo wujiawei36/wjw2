@@ -90,31 +90,9 @@
     return section;
   }
 
-  // 后端工具：API Key + 单面板（fetch 到 /tools/api/<slug>/）
+  // 后端工具：无前端交互（浏览器无法直算，如服务器时间/访客 IP/MD5），
+  // API 调用示例由服务端模板直接渲染，无需在此挂载面板
   if (kind === 'backend') {
-    var apiKeyInput = document.getElementById('api-key');
-    container.appendChild(makePanel({
-      id: slug,
-      placeholder: '输入内容…',
-      run: function (input) {
-        var apiKey = apiKeyInput.value.trim();
-        return fetch('/tools/api/' + slug + '/', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-API-Key': apiKey
-          },
-          body: JSON.stringify({ input: input })
-        }).then(function (resp) {
-          return resp.json().then(function (data) {
-            return { status: resp.status, data: data };
-          });
-        }).then(function (r) {
-          if (r.data.ok) return renderResult(r.data.data);
-          throw new Error(r.data.error || ('HTTP ' + r.status));
-        });
-      }
-    }));
     return;
   }
 
