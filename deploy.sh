@@ -10,7 +10,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-echo "==> [1/6] 定位虚拟环境"
+echo "==> [1/7] 定位虚拟环境"
 if [ -x "./wjw2-env/bin/python" ]; then
     PY="./wjw2-env/bin/python"
     PIP="./wjw2-env/bin/pip"
@@ -24,7 +24,7 @@ else
 fi
 echo "    使用: $PY"
 
-echo "==> [2/6] 备份数据库"
+echo "==> [2/7] 备份数据库"
 BACKUP_DIR="$PWD/backups"
 mkdir -p "$BACKUP_DIR"
 if [ -f "$PWD/db.sqlite3" ]; then
@@ -40,10 +40,10 @@ else
     echo "    未发现 db.sqlite3（首次部署？跳过备份）"
 fi
 
-echo "==> [3/6] 安装 / 更新依赖"
+echo "==> [3/7] 安装 / 更新依赖"
 "$PIP" install -r requirements.txt
 
-echo "==> [4/6] 配置检查 (manage.py check)"
+echo "==> [4/7] 配置检查 (manage.py check)"
 "$PY" manage.py check
 
 echo "==> [5/7] 数据库迁移"
