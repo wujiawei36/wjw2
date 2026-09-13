@@ -1,14 +1,16 @@
 """工具站注册表：定义所有工具的元数据。
 
 kind 取值：
-- 'frontend'：纯前端 JS 直算（浏览器内完成，零请求、零 Key）
-- 'backend'  ：后端 Python 计算（需 API Key，POST /tools/api/<slug>/）
+- 'frontend'：浏览器 JS 直算（零请求、零 Key）；同时开放 API（脚本带 Key 调用）
+- 'backend'  ：后端 Python 计算（浏览器无法直算，如服务器时间/真实 IP）
 
 字段说明：
 - intro  ：详细介绍（详情页展示）
 - usage  ：操作说明（步骤列表）
 - related：相关工具 slug（详情页底部链接）
-- rate_limit：后端工具默认频率（window 秒 / max 次），None = 不限
+- rate_limit：API/手动获取的默认频率（window 秒 / max 次），None = 不限
+- api_example：详情页 curl 示例的 -d 参数
+- allow_anonymous：backend 工具允许浏览器免 Key 手动获取（按 IP 限频）
 """
 TOOLS = [
     {'slug': 'json', 'title': 'JSON 格式化', 'desc': '格式化 / 校验 JSON', 'kind': 'frontend',
@@ -61,22 +63,24 @@ TOOLS = [
      'intro': '按行去除重复文本，保留首次出现的顺序。',
      'usage': ['粘贴多行文本', '点击「去重」', '结果保留原顺序'],
      'related': ['regex', 'wordcount']},
-    {'slug': 'md5', 'title': 'MD5 哈希', 'desc': '文本 MD5（后端计算，需 API Key）', 'kind': 'backend',
-     'rate_limit': {'window': 60, 'max': 30},   # 工具默认频率：每 60 秒最多 30 次
-     'intro': '计算文本的 MD5 哈希。由后端计算，支持脚本通过 API 批量调用。',
-     'usage': ['脚本调用：POST /tools/api/md5/ 携带 X-API-Key，body 为 {"input":"文本"}', '返回 {"ok":true,"data":{"md5":"..."}}'],
-     'related': ['sha'],
+    {'slug': 'md5', 'title': 'MD5 哈希', 'desc': '文本 MD5（浏览器直算）', 'kind': 'frontend',
+     'intro': '计算文本的 MD5 哈希。在浏览器本地完成，无需联网、无需 API Key；也支持脚本通过 API 批量调用。',
+     'usage': ['输入文本', '点击「计算 MD5」', '哈希值显示在下方，可直接复制'],
+     'related': ['sha', 'base64'],
+     'rate_limit': {'window': 60, 'max': 30},
      'api_example': '{"input":"hello"}'},
-    {'slug': 'servertime', 'title': '服务器时间', 'desc': '服务器 UTC/本地时间（后端，需 API Key）', 'kind': 'backend',
-     'rate_limit': None,                        # 轻量工具，默认不限频
-     'intro': '查看服务器当前的 UTC / 本地时间与 Unix 时间戳。',
-     'usage': ['脚本调用：POST /tools/api/servertime/ 携带 X-API-Key（body 可为 {}）', '返回服务器 UTC/本地时间与 Unix 时间戳'],
+    {'slug': 'servertime', 'title': '服务器时间', 'desc': '服务器 UTC/本地时间', 'kind': 'backend',
+     'allow_anonymous': True,                   # 浏览器免 Key 手动获取（按 IP 限频）
+     'rate_limit': {'window': 60, 'max': 30},   # 手动获取与 API 统一限频
+     'intro': '查看服务器当前的 UTC / 本地时间与 Unix 时间戳。浏览器无法直接读取服务器时间，故手动获取也需请求服务器（免 Key，按 IP 限频）。',
+     'usage': ['页面点击「获取」查看服务器时间（免 Key，按 IP 限频）', '或脚本调用：POST /tools/api/servertime/ 携带 X-API-Key（body 可为 {}）'],
      'related': ['timestamp'],
      'api_example': '{}'},
-    {'slug': 'ipinfo', 'title': '我的 IP', 'desc': '查看访客真实 IP（后端，需 API Key）', 'kind': 'backend',
-     'rate_limit': None,                        # 轻量工具，默认不限频
-     'intro': '查看访客的真实 IP 与 User-Agent（服务器视角）。',
-     'usage': ['脚本调用：POST /tools/api/ipinfo/ 携带 X-API-Key（body 可为 {}）', '返回访客真实 IP 与 User-Agent（服务器视角）'],
+    {'slug': 'ipinfo', 'title': '我的 IP', 'desc': '查看访客真实 IP', 'kind': 'backend',
+     'allow_anonymous': True,                   # 浏览器免 Key 手动获取（按 IP 限频）
+     'rate_limit': {'window': 60, 'max': 30},   # 手动获取与 API 统一限频
+     'intro': '查看访客的真实公网 IP 与 User-Agent（服务器视角）。浏览器无法直接获取公网 IP，故手动获取也需请求服务器（免 Key，按 IP 限频）。',
+     'usage': ['页面点击「获取」查看真实 IP（免 Key，按 IP 限频）', '或脚本调用：POST /tools/api/ipinfo/ 携带 X-API-Key（body 可为 {}）'],
      'related': ['servertime'],
      'api_example': '{}'},
 ]

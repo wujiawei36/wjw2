@@ -45,6 +45,7 @@
 <script>
 	window.__TOOL_SLUG = '{{ tool.slug }}';
 	window.__TOOL_KIND = '{{ tool.kind }}';
+	window.__TOOL_ANON = {% if tool.allow_anonymous %}true{% else %}false{% endif %};
 </script>
 {% if tool_js %}
 <script src="{{ tool_js }}"></script>

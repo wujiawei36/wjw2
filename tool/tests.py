@@ -126,7 +126,9 @@ class ToolApiTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertTrue(data['ok'])
-        self.assertIn('UTC:', data['data']['text'])
+        self.assertIn('utc', data['data'])
+        self.assertIn('local', data['data'])
+        self.assertIn('unix', data['data'])
 
     def test_ipinfo_with_valid_key(self):
         resp = self.client.post('/tools/api/ipinfo/', data='{}',
@@ -135,12 +137,15 @@ class ToolApiTests(TestCase):
         self.assertEqual(resp.status_code, 200)
         data = resp.json()
         self.assertTrue(data['ok'])
-        self.assertIn('IP:', data['data']['text'])
+        self.assertIn('ip', data['data'])
+        self.assertIn('user_agent', data['data'])
 
-    def test_servertime_without_key(self):
+    def test_servertime_without_key_is_anonymous(self):
+        # servertime 开放匿名：无 Key 也返回 200（按 IP 限频）
         resp = self.client.post('/tools/api/servertime/', data='{}',
                                 content_type='application/json')
-        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['ok'])
 
     def test_json_api_formats(self):
         # 前端工具同样开放 API（脚本调用）
@@ -390,3 +395,62 @@ class ApiCurlExampleTests(TestCase):
                                 HTTP_USER_AGENT='curl/8.0',
                                 REMOTE_ADDR='8.8.8.8')
         self.assertEqual(resp.status_code, 401)
+
+
+class ToolAnonymousTests(TestCase):
+    """md5 前端化；servertime/ipinfo 匿名免 Key 手动获取 + IP 限频"""
+
+    def setUp(self):
+        from .ratelimit import reset
+        reset()
+
+    def test_md5_detail_loads_frontend_js(self):
+        # md5 已前端化：详情页加载 md5.js，浏览器直算
+        resp = self.client.get('/tools/md5/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('tool/js/md5.js', resp.content.decode())
+
+    def test_servertime_anonymous_ok(self):
+        resp = self.client.post('/tools/api/servertime/', data='{}',
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertIn('utc', data['data'])
+        self.assertIn('local', data['data'])
+
+    def test_ipinfo_anonymous_ok(self):
+        resp = self.client.post('/tools/api/ipinfo/', data='{}',
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertTrue(data['ok'])
+        self.assertIn('ip', data['data'])
+        self.assertIn('user_agent', data['data'])
+
+    def test_anonymous_rate_limited_by_ip(self):
+        # servertime 匿名按 IP 限频 30 次/60秒，第 31 次 429
+        for _ in range(30):
+            resp = self.client.post('/tools/api/servertime/', data='{}',
+                                    content_type='application/json')
+            self.assertEqual(resp.status_code, 200)
+        resp = self.client.post('/tools/api/servertime/', data='{}',
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 429)
+        self.assertEqual(resp.json()['error'], 'RATE_LIMITED')
+        self.assertIn('Retry-After', resp.headers)
+
+    def test_non_anonymous_tool_requires_key(self):
+        # 前端工具 json 不开放匿名：缺 Key 仍 401
+        resp = self.client.post('/tools/api/json/', data='{"input":"[1]"}',
+                                content_type='application/json')
+        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.json()['error'], 'MISSING_KEY')
+
+    def test_invalid_key_not_treated_as_anonymous(self):
+        # 即使工具允许匿名，带无效 Key 仍 401（不降级为匿名）
+        resp = self.client.post('/tools/api/servertime/', data='{}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY='wjw2_live_wrong')
+        self.assertEqual(resp.status_code, 401)
+        self.assertEqual(resp.json()['error'], 'INVALID_KEY')

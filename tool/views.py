@@ -72,20 +72,29 @@ def tool_api(request, slug):
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 
     api_key, err = _resolve_api_key(request)
-    if err:
+    anonymous = bool(tool.get('allow_anonymous') and err == 'MISSING_KEY')
+    if anonymous:
+        api_key = None
+    elif err:
         _audit(request, slug, None, err)
         return JsonResponse({'ok': False, 'error': err}, status=401)
 
-    ok, err = api_key.validate(slug)
-    if not ok:
-        _audit(request, slug, api_key, err)
-        return JsonResponse({'ok': False, 'error': err}, status=403)
+    if not anonymous:
+        ok, err = api_key.validate(slug)
+        if not ok:
+            _audit(request, slug, api_key, err)
+            return JsonResponse({'ok': False, 'error': err}, status=403)
 
-    # 频率限流（Key 维度 + IP 维度，双保险）
-    window, max_c = api_key.rate_limit_for(tool.get('rate_limit'))
+    # 频率限流（带 Key 走 Key+IP 双维度；匿名手动获取仅 IP 维度）
+    if anonymous:
+        rl = tool.get('rate_limit')
+        window, max_c = (rl['window'], rl['max']) if rl else (None, None)
+        dim_keys = [f'{slug}:ip:{get_ip(request)}']
+    else:
+        window, max_c = api_key.rate_limit_for(tool.get('rate_limit'))
+        dim_keys = [f'{slug}:key:{api_key.key_hash}', f'{slug}:ip:{get_ip(request)}']
     if max_c:
-        ip = get_ip(request)
-        for dim_key in (f'{slug}:key:{api_key.key_hash}', f'{slug}:ip:{ip}'):
+        for dim_key in dim_keys:
             ok, retry = rate_allow(dim_key, window, max_c)
             if not ok:
                 _audit(request, slug, api_key, 'RATE_LIMITED')
@@ -106,22 +115,23 @@ def tool_api(request, slug):
     elif slug == 'servertime':
         now = timezone.now()
         local = timezone.localtime(now)
-        data = {'text': (
-            'UTC: ' + now.strftime('%Y-%m-%d %H:%M:%S') + '\n'
-            '本地: ' + local.strftime('%Y-%m-%d %H:%M:%S') + ' (' + str(local.tzinfo) + ')\n'
-            'Unix 时间戳(秒): ' + str(int(now.timestamp()))
-        )}
+        data = {
+            'utc': now.strftime('%Y-%m-%d %H:%M:%S'),
+            'local': local.strftime('%Y-%m-%d %H:%M:%S'),
+            'timezone': str(local.tzinfo),
+            'unix': int(now.timestamp()),
+        }
     elif slug == 'ipinfo':
-        data = {'text': (
-            'IP: ' + (get_ip(request) or '未知') + '\n'
-            'User-Agent: ' + request.META.get('HTTP_USER_AGENT', '')
-        )}
+        data = {
+            'ip': get_ip(request) or 'unknown',
+            'user_agent': request.META.get('HTTP_USER_AGENT', ''),
+        }
     elif slug == 'json':
         try:
             obj = json.loads(text)
         except json.JSONDecodeError as e:
             return JsonResponse(
-                {'ok': False, 'error': 'BAD_PARAM', 'detail': f'JSON 解析失败：{e}'}, status=400)
+                {'ok': False, 'error': 'BAD_PARAM', 'detail': f'Invalid JSON: {e}'}, status=400)
         data = {'text': json.dumps(obj, indent=2, ensure_ascii=False)}
     elif slug == 'sha':
         raw = text.encode('utf-8')
@@ -140,15 +150,16 @@ def tool_api(request, slug):
                 data = {'text': base64.b64decode(text.encode('ascii')).decode('utf-8')}
             except Exception as e:
                 return JsonResponse(
-                    {'ok': False, 'error': 'BAD_PARAM', 'detail': f'Base64 解码失败：{e}'}, status=400)
+                    {'ok': False, 'error': 'BAD_PARAM', 'detail': f'Invalid Base64: {e}'}, status=400)
         else:
             return JsonResponse(
-                {'ok': False, 'error': 'BAD_PARAM', 'detail': 'mode 需为 encode 或 decode'}, status=400)
+                {'ok': False, 'error': 'BAD_PARAM', 'detail': 'mode must be "encode" or "decode"'}, status=400)
     else:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 
-    api_key.used += 1
-    api_key.last_used_at = timezone.now()
-    api_key.save(update_fields=['used', 'last_used_at'])
+    if api_key:
+        api_key.used += 1
+        api_key.last_used_at = timezone.now()
+        api_key.save(update_fields=['used', 'last_used_at'])
     _audit(request, slug, api_key, 'OK')
     return JsonResponse({'ok': True, 'data': data})

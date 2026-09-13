@@ -90,9 +90,71 @@
     return section;
   }
 
-  // 后端工具：无前端交互（浏览器无法直算，如服务器时间/访客 IP/MD5），
-  // API 调用示例由服务端模板直接渲染，无需在此挂载面板
+  // 免 Key「获取」面板（服务器侧信息工具）：POST 到 /tools/api/<slug>/（无 Key），后端按 IP 限频
+  function makeFetchPanel(slug) {
+    var section = document.createElement('section');
+    section.className = 'tool-panel';
+
+    var btn = document.createElement('button');
+    btn.className = 'tool-run';
+    btn.textContent = '获取';
+    section.appendChild(btn);
+
+    var ta = document.createElement('textarea');
+    ta.className = 'tool-output';
+    ta.rows = 6;
+    ta.readOnly = true;
+    ta.placeholder = '结果…';
+    section.appendChild(ta);
+
+    function format(data) {
+      if (slug === 'servertime') {
+        return 'UTC: ' + data.utc + '\n' +
+               '本地: ' + data.local + ' (' + data.timezone + ')\n' +
+               'Unix 时间戳(秒): ' + data.unix;
+      }
+      if (slug === 'ipinfo') {
+        return 'IP: ' + data.ip + '\n' +
+               'User-Agent: ' + data.user_agent;
+      }
+      return JSON.stringify(data, null, 2);
+    }
+
+    btn.addEventListener('click', function () {
+      btn.disabled = true;
+      ta.value = '获取中…';
+      fetch('/tools/api/' + slug + '/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+      }).then(function (resp) {
+        return resp.json().then(function (data) {
+          return { status: resp.status, data: data };
+        });
+      }).then(function (r) {
+        btn.disabled = false;
+        if (r.data.ok) {
+          ta.value = format(r.data.data);
+        } else if (r.status === 429) {
+          ta.value = '请求过于频繁，请稍后再试';
+        } else {
+          ta.value = r.data.error + (r.data.detail ? ': ' + r.data.detail : '');
+        }
+      }).catch(function (e) {
+        btn.disabled = false;
+        ta.value = '错误：' + (e.message || String(e));
+      });
+    });
+
+    return section;
+  }
+
+  // 后端工具：浏览器无法直算（服务器时间/真实 IP 等）
+  // 若允许匿名（allow_anonymous），渲染「获取」按钮（免 Key，后端按 IP 限频）
   if (kind === 'backend') {
+    if (window.__TOOL_ANON) {
+      container.appendChild(makeFetchPanel(slug));
+    }
     return;
   }
 
