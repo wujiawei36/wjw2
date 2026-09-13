@@ -5,6 +5,7 @@ from django.contrib.admin.models import LogEntry
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
 from django.utils.safestring import mark_safe
+from django.urls import reverse
 from django.contrib import admin, messages
 from django.utils import timezone
 from datetime import timedelta
@@ -14,8 +15,14 @@ from hijack.contrib.admin import HijackUserAdminMixin
 @admin.register(CustomUser)
 class CustomUserAdmin(HijackUserAdminMixin, UserAdmin):
     # 注意：HijackUserAdminMixin 会自动在列表末尾注入劫持按钮列，无需手动声明
-    list_display = ["id"] + list(UserAdmin.list_display) + ["is_superuser", "password_status", "can_develop", "is_active", "need_email_active"]
+    list_display = ["id", "profile_link"] + list(UserAdmin.list_display) + ["is_superuser", "password_status", "can_develop", "is_active", "need_email_active"]
     ordering = ["id"]  # 默认按 id 升序
+
+    @admin.display(description="主页")
+    def profile_link(self, obj):
+        """指向前台用户主页 /user/<id>/ 的链接（新标签页打开）"""
+        url = reverse('users:user_profile', args=[obj.id])
+        return mark_safe(f'<a href="{url}" target="_blank" rel="noopener">主页</a>')
 
     @admin.display(description="启用密码", ordering="password")
     def password_status(self, obj):

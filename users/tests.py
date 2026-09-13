@@ -265,3 +265,20 @@ class UserProfileTests(TestCase):
         self.client.force_login(self.alice)
         resp = self.client.get('/user/99999999/')
         self.assertEqual(resp.status_code, 404)
+
+
+class UserAdminProfileLinkTests(TestCase):
+    """后台用户列表页每行应有一个指向前台主页 /user/<id>/ 的链接"""
+
+    def setUp(self):
+        self.admin = User.objects.create_user(username='upl_admin', password='pass-upl-123456', is_staff=True, is_superuser=True)
+        self.target = User.objects.create_user(username='upl_target', password='pass-target-123456')
+
+    def test_changelist_has_profile_link(self):
+        self.client.force_login(self.admin)
+        resp = self.client.get('/admin/users/customuser/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        # 每行应有一个指向该用户前台主页的链接（新标签页打开）
+        self.assertIn(f'/user/{self.target.id}/', body)
+        self.assertIn('target="_blank"', body)
