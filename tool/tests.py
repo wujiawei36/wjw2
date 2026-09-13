@@ -631,3 +631,32 @@ class ToolApiResponseDocTests(TestCase):
         body = resp.content.decode()
         self.assertIn('"md5"', body)
         self.assertIn('5d41402abc4b2a76b9719d911017c592', body)
+
+
+class ClockToolTests(TestCase):
+    """大屏时钟：纯前端展示型工具，无输入输出、无 API"""
+
+    def test_detail_loads_clock_js(self):
+        resp = self.client.get('/tools/clock/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('tool/js/clock.js', resp.content.decode())
+
+    def test_detail_has_no_api_section(self):
+        resp = self.client.get('/tools/clock/')
+        body = resp.content.decode()
+        self.assertNotIn('curl -X POST', body)
+        self.assertNotIn('X-API-Key', body)
+
+    def test_index_lists_clock(self):
+        resp = self.client.get('/tools/')
+        self.assertIn('大屏时钟', resp.content.decode())
+
+    def test_clock_api_with_key_returns_404(self):
+        # 纯前端展示型工具不提供 API 计算，带有效 Key 调用其 API 端点应 404
+        full_key, key_hash = generate_api_key()
+        ApiKey.objects.create(name='clock_test', key_hash=key_hash)
+        resp = self.client.post('/tools/api/clock/', data='{}',
+                                content_type='application/json',
+                                HTTP_X_API_KEY=full_key)
+        self.assertEqual(resp.status_code, 404)
+        self.assertEqual(resp.json()['error'], 'UNSUPPORTED_SLUG')

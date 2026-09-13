@@ -158,9 +158,11 @@
     return;
   }
 
-  // 前端工具：声明式多面板，或默认单面板（run）
+  // 前端工具：自定义渲染（render）优先；其次声明式多面板（panels）；再次单面板（run）
   var tool = window.__tool;
-  if (tool && tool.panels) {
+  if (tool && typeof tool.render === 'function') {
+    container.appendChild(tool.render());
+  } else if (tool && tool.panels) {
     tool.panels.forEach(function (p) {
       container.appendChild(makePanel(p));
     });
