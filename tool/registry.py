@@ -68,17 +68,19 @@ TOOLS = [
     "uuids": ["...", "..."]
   }
 }'''},
-    {'slug': 'password', 'title': '随机密码', 'desc': '生成随机强密码', 'kind': 'frontend',
-     'intro': '生成随机强密码，包含大写、小写、数字和符号，使用密码学安全随机源。',
-     'usage': ['输入密码长度（默认 16，4~256）', '点击「生成」'],
+    {'slug': 'password', 'title': '随机密码', 'desc': '批量生成随机密码（数量/长度/字符集）', 'kind': 'frontend',
+     'intro': '批量生成随机强密码，可设置长度、数量与字符集（含/不含符号、纯数字等），使用密码学安全随机源，并保证每个字符组至少出现一次。',
+     'usage': ['设置长度（默认 16，4~256）', '设置生成数量（默认 1，1~100）', '选择字符集（字母+数字+符号 / 字母+数字 / 小写+数字 / 纯数字）', '点击「生成」，每个密码一行'],
      'related': ['uuid'],
      'rate_limit': {'window': 60, 'max': 30},
-     'api_example': '{"input":"16"}',
+     'api_example': '{"input":"16","count":5,"charset":"alnum"}',
      'api_response': '''{
   "ok": true,
   "data": {
-    "password": "xK9#mP2$",
-    "length": 16
+    "passwords": ["xK9mP2dF8q...", "..."],
+    "count": 5,
+    "length": 16,
+    "charset": "alnum"
   }
 }'''},
     {'slug': 'wordcount', 'title': '字数统计', 'desc': '字符 / 字节 / 行数统计', 'kind': 'frontend',

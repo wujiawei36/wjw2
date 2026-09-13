@@ -537,7 +537,51 @@ class ToolRemainingApiTests(TestCase):
     def test_password_generates(self):
         resp = self._post('password', {'input': '20'})
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.json()['data']['password']), 20)
+        data = resp.json()['data']
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(data['length'], 20)
+        self.assertEqual(data['charset'], 'all')
+        self.assertEqual(len(data['passwords']), 1)
+        self.assertEqual(len(data['passwords'][0]), 20)
+
+    def test_password_count(self):
+        resp = self._post('password', {'input': '12', 'count': 5})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['count'], 5)
+        self.assertEqual(len(data['passwords']), 5)
+        for p in data['passwords']:
+            self.assertEqual(len(p), 12)
+
+    def test_password_charset_alnum_no_symbols(self):
+        resp = self._post('password', {'input': '16', 'count': 10, 'charset': 'alnum'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['charset'], 'alnum')
+        for p in data['passwords']:
+            self.assertTrue(p.isalnum())
+
+    def test_password_charset_digits(self):
+        resp = self._post('password', {'input': '8', 'charset': 'digits'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        for p in data['passwords']:
+            self.assertTrue(p.isdigit())
+
+    def test_password_charset_invalid_rejected(self):
+        resp = self._post('password', {'input': '16', 'charset': 'foo'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_password_count_over_limit_rejected(self):
+        resp = self._post('password', {'input': '16', 'count': '101'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_password_count_non_integer_rejected(self):
+        resp = self._post('password', {'input': '16', 'count': 'abc'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
 
     def test_password_over_limit_rejected(self):
         resp = self._post('password', {'input': '999'})
@@ -557,7 +601,10 @@ class ToolRemainingApiTests(TestCase):
     def test_password_empty_defaults_to_16(self):
         resp = self._post('password', {'input': ''})
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(len(resp.json()['data']['password']), 16)
+        data = resp.json()['data']
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(len(data['passwords']), 1)
+        self.assertEqual(len(data['passwords'][0]), 16)
 
     def test_wordcount(self):
         resp = self._post('wordcount', {'input': 'hello 你好'})

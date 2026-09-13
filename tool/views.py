@@ -4,7 +4,6 @@ import json
 import logging
 import re
 import secrets
-import string
 import uuid
 from datetime import datetime, timezone as dt_timezone
 
@@ -21,6 +20,16 @@ from .ratelimit import allow as rate_allow
 from .registry import TOOLS, get_tool
 
 logger = logging.getLogger(__name__)
+
+# 随机密码字符集预设（与前端 password.js 保持一致）
+PASSWORD_CHARSETS = {
+    'all': ['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz',
+            '0123456789', '!@#$%^&*()-_=+[]{};:,.<>?'],
+    'alnum': ['ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz',
+              '0123456789'],
+    'lower_digit': ['abcdefghijklmnopqrstuvwxyz', '0123456789'],
+    'digits': ['0123456789'],
+}
 
 
 def tool_index(request):
@@ -201,6 +210,7 @@ def tool_api(request, slug):
                                      'detail': 'count must be between 1 and 1000'}, status=400)
         data = {'count': n, 'uuids': [str(uuid.uuid4()) for _ in range(n)]}
     elif slug == 'password':
+        # 长度（input）
         s = text.strip()
         if s == '':
             n = 16
@@ -212,15 +222,35 @@ def tool_api(request, slug):
             if n < 4 or n > 256:
                 return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
                                      'detail': 'length must be between 4 and 256'}, status=400)
-        upper = string.ascii_uppercase
-        lower = string.ascii_lowercase
-        digits = string.digits
-        symbols = '!@#$%^&*()-_=+[]{};:,.<>?'
-        all_chars = upper + lower + digits + symbols
-        chars = [secrets.choice(upper), secrets.choice(lower), secrets.choice(digits), secrets.choice(symbols)]
-        chars += [secrets.choice(all_chars) for _ in range(n - 4)]
-        secrets.SystemRandom().shuffle(chars)
-        data = {'password': ''.join(chars), 'length': n}
+        # 数量（count）
+        cnt_s = str(body.get('count', '1')).strip()
+        if cnt_s == '':
+            cnt = 1
+        else:
+            if not cnt_s.isdigit():
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                     'detail': 'count must be an integer (1~100)'}, status=400)
+            cnt = int(cnt_s)
+            if cnt < 1 or cnt > 100:
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                     'detail': 'count must be between 1 and 100'}, status=400)
+        # 字符集（charset）
+        cs = str(body.get('charset', 'all')).strip().lower()
+        if cs not in PASSWORD_CHARSETS:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'charset must be one of: all, alnum, lower_digit, digits'}, status=400)
+        groups = PASSWORD_CHARSETS[cs]
+        pool = ''.join(groups)
+
+        def _gen():
+            # 保证每个字符组至少出现一次，再随机填充，最后打乱
+            chars = [secrets.choice(g) for g in groups]
+            chars += [secrets.choice(pool) for _ in range(n - len(groups))]
+            secrets.SystemRandom().shuffle(chars)
+            return ''.join(chars)
+
+        data = {'passwords': [_gen() for _ in range(cnt)],
+                'count': cnt, 'length': n, 'charset': cs}
     elif slug == 'wordcount':
         data = {
             'chars': len(text),
