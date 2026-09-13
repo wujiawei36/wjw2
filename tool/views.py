@@ -15,7 +15,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from utils.get_ip import get_ip
-from .models import ApiKey, hash_api_key
+from .models import ApiKey, hash_api_key, bump_api_counter
 from .ratelimit import allow as rate_allow
 from .registry import TOOLS, get_tool
 
@@ -84,6 +84,9 @@ def tool_api(request, slug):
     tool = get_tool(slug)
     if tool is None:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
+
+    # 合法工具的 API 调用计数 +1（今日 + 累计）
+    bump_api_counter()
 
     api_key, err = _resolve_api_key(request)
     anonymous = bool(tool.get('allow_anonymous') and err == 'MISSING_KEY')

@@ -94,3 +94,43 @@ class ApiKey(models.Model):
         if tool_rate_limit:
             return tool_rate_limit['window'], tool_rate_limit['max']
         return None, None
+
+
+class ApiRequestCounter(models.Model):
+    """API 请求聚合计数器（单行记录，pk=1）。
+
+    用「统计日期 + 当日计数」两个变量聚合，跨天自动重置今日计数；
+    total_count 单调递增，保留历史累计总量。相比逐条埋点表，本方案不随
+    调用量膨胀，且能同时给出「今日」与「累计」两个口径。
+    """
+    date = models.DateField('统计日期')
+    today_count = models.PositiveIntegerField('今日次数', default=0)
+    total_count = models.PositiveIntegerField('累计次数', default=0)
+
+    class Meta:
+        verbose_name = 'API 请求计数'
+        verbose_name_plural = 'API 请求计数'
+
+    def __str__(self):
+        return f'{self.date} 今日 {self.today_count} / 累计 {self.total_count}'
+
+
+def bump_api_counter():
+    """每次工具 API 调用计数 +1（今日与累计）。
+
+    跨天时今日重置为 1、累计继续累加；用 F() 原子更新 + date 条件更新，
+    保证并发下不丢计数、不重复重置。
+    """
+    from django.db.models import F
+    today = timezone.localdate()
+    obj, created = ApiRequestCounter.objects.get_or_create(
+        pk=1, defaults={'date': today, 'today_count': 1, 'total_count': 1})
+    if created:
+        return
+    if obj.date != today:
+        # 跨天：仅当记录仍停在旧日期时才执行重置（并发下只放行第一个请求）
+        ApiRequestCounter.objects.filter(pk=1, date=obj.date).update(
+            date=today, today_count=1, total_count=F('total_count') + 1)
+    else:
+        ApiRequestCounter.objects.filter(pk=1).update(
+            today_count=F('today_count') + 1, total_count=F('total_count') + 1)

@@ -2,7 +2,7 @@ import json
 
 from django.test import TestCase
 
-from .models import ApiKey, generate_api_key, hash_api_key
+from .models import ApiKey, ApiRequestCounter, generate_api_key, hash_api_key
 
 
 class ApiKeyModelTests(TestCase):
@@ -735,3 +735,50 @@ class ClockToolTests(TestCase):
                                 HTTP_X_API_KEY=full_key)
         self.assertEqual(resp.status_code, 404)
         self.assertEqual(resp.json()['error'], 'UNSUPPORTED_SLUG')
+
+
+class ApiRequestCounterTests(TestCase):
+    """API 请求聚合计数器：今日/累计口径与跨天重置"""
+
+    def setUp(self):
+        self.full_key, self.key_hash = generate_api_key()
+        ApiKey.objects.create(name='ctr_test', key_hash=self.key_hash)
+
+    def _call(self, slug='md5', key=None):
+        headers = {'HTTP_X_API_KEY': key} if key else {}
+        return self.client.post(f'/tools/api/{slug}/', data='{"input":"x"}',
+                                content_type='application/json', **headers)
+
+    def test_bump_increments_today_and_total(self):
+        self._call('md5', self.full_key)
+        self._call('md5', self.full_key)
+        c = ApiRequestCounter.objects.get(pk=1)
+        self.assertEqual(c.today_count, 2)
+        self.assertEqual(c.total_count, 2)
+
+    def test_anonymous_call_counts(self):
+        # servertime 允许匿名，匿名调用也应计入
+        self._call('servertime')
+        c = ApiRequestCounter.objects.get(pk=1)
+        self.assertEqual(c.today_count, 1)
+        self.assertEqual(c.total_count, 1)
+
+    def test_unknown_slug_not_counted(self):
+        resp = self._call('nonexistent', self.full_key)
+        self.assertEqual(resp.status_code, 404)
+        self.assertFalse(ApiRequestCounter.objects.filter(pk=1).exists())
+
+    def test_cross_day_resets_today_keeps_total(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        for _ in range(3):
+            self._call('md5', self.full_key)
+        c = ApiRequestCounter.objects.get(pk=1)
+        self.assertEqual((c.today_count, c.total_count), (3, 3))
+        # 把统计日期拨到昨天，再调用一次：今日重置、累计继续累加
+        c.date = timezone.localdate() - timedelta(days=1)
+        c.save(update_fields=['date'])
+        self._call('md5', self.full_key)
+        c.refresh_from_db()
+        self.assertEqual(c.today_count, 1)
+        self.assertEqual(c.total_count, 4)

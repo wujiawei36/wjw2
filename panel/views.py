@@ -12,7 +12,7 @@ from django.conf import settings
 from datetime import timedelta
 from axes.models import AccessFailureLog, AccessLog, AccessAttempt
 from users.models import InviteCode, Ban_IP, PageVisit, create_invite_code
-from tool.models import ApiKey, generate_api_key
+from tool.models import ApiKey, generate_api_key, ApiRequestCounter
 from io import StringIO
 import sys
 import logging
@@ -127,10 +127,15 @@ def dashboard(request):
     limit = getattr(settings, 'AXES_FAILURE_LIMIT', 5)
 
     # ===== 指标卡 =====
+    counter = ApiRequestCounter.objects.filter(pk=1).first()
+    api_today = counter.today_count if (counter and counter.date == timezone.localdate()) else 0
+    api_total = counter.total_count if counter else 0
     stats = {
         'user_count': User.objects.count(),
         'today_logins': AccessLog.objects.filter(attempt_time__gte=today_start).count(),
         'today_visits': PageVisit.objects.filter(created_at__gte=today_start).count(),
+        'api_today': api_today,
+        'api_total': api_total,
         'failures_24h': AccessFailureLog.objects.filter(attempt_time__gte=hours_24).count(),
         'locked_now': AccessAttempt.objects.filter(
             failures_since_start__gte=limit,

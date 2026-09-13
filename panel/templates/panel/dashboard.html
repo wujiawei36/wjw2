@@ -45,6 +45,16 @@
             <div class="dash-sub">页面请求 · 不含管理端</div>
         </div>
         <div class="dash-card">
+            <div class="dash-label">今日 API</div>
+            <div class="dash-num">{{ stats.api_today }}</div>
+            <div class="dash-sub">工具接口调用次数</div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-label">API 累计</div>
+            <div class="dash-num">{{ stats.api_total }}</div>
+            <div class="dash-sub">含匿名调用</div>
+        </div>
+        <div class="dash-card">
             <div class="dash-label">24h 失败尝试</div>
             <div class="dash-num">{{ stats.failures_24h }}</div>
             <div class="dash-sub">当前锁定 {{ stats.locked_now }}</div>

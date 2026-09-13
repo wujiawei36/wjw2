@@ -21,6 +21,25 @@ class DashboardTests(TestCase):
         # /panel/dashboard/ 自身路径被排除，因此今日访问应为 1
         self.assertEqual(resp.context['stats']['today_visits'], 1)
 
+    def test_dashboard_shows_api_counter(self):
+        from django.utils import timezone
+        from tool.models import ApiRequestCounter
+        ApiRequestCounter.objects.create(
+            pk=1, date=timezone.localdate(), today_count=5, total_count=42)
+        self.client.force_login(self.staff, backend='django.contrib.auth.backends.ModelBackend')
+        resp = self.client.get('/panel/dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['stats']['api_today'], 5)
+        self.assertEqual(resp.context['stats']['api_total'], 42)
+
+    def test_dashboard_api_counter_defaults_zero(self):
+        # 尚无任何计数记录时，两个口径均为 0，不报错
+        self.client.force_login(self.staff, backend='django.contrib.auth.backends.ModelBackend')
+        resp = self.client.get('/panel/dashboard/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.context['stats']['api_today'], 0)
+        self.assertEqual(resp.context['stats']['api_total'], 0)
+
     def test_dashboard_requires_staff(self):
         resp = self.client.get('/panel/dashboard/')
         self.assertNotEqual(resp.status_code, 200)  # 未登录应被重定向
