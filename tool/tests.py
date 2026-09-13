@@ -648,11 +648,11 @@ class ClockToolTests(TestCase):
         self.assertNotIn('X-API-Key', body)
 
     def test_immersive_no_decorations(self):
-        # 沉浸式工具详情页只渲染工具本体，不渲染标题/介绍/操作说明/相关工具
+        # 沉浸式工具只渲染返回链接 + 工具本体，不渲染标题/介绍/操作说明/相关工具
         resp = self.client.get('/tools/clock/')
         body = resp.content.decode()
         self.assertIn('tool-container', body)
-        self.assertNotIn('返回工具列表', body)
+        self.assertIn('返回工具列表', body)
         self.assertNotIn('操作说明', body)
         self.assertNotIn('相关工具', body)
         self.assertNotIn('每秒自动刷新', body)  # intro 文案不应出现
