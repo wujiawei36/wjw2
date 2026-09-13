@@ -126,3 +126,6 @@
 .tool-card-badge.api {
 	background: #6c757d;
 }
+.tool-card-badge.server {
+	background: #007bff;
+}

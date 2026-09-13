@@ -71,6 +71,17 @@ class ToolPagesTests(TestCase):
                      '文本去重', '服务器时间', '我的 IP']:
             self.assertIn(name, body)
 
+    def test_index_badges(self):
+        # 三标签徽章：浏览器处理 / 服务器处理 / 支持API
+        body = self.client.get('/tools/').content.decode()
+        # 说明文字各含 1 次 + 徽章次数：
+        #   浏览器处理：说明1 + 13 个前端工具(12 个普通前端 + 大屏时钟)
+        #   服务器处理：说明1 + 2 个后端工具(servertime/ipinfo)
+        #   支持API：说明1 + 14 个支持 API 的工具(除大屏时钟外)
+        self.assertEqual(body.count('浏览器处理'), 14)
+        self.assertEqual(body.count('服务器处理'), 3)
+        self.assertEqual(body.count('支持API'), 15)
+
     def test_frontend_tools_detail_load_js(self):
         for slug in ['sha', 'color', 'number', 'regex', 'text']:
             resp = self.client.get(f'/tools/{slug}/')

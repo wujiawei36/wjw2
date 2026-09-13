@@ -6,13 +6,15 @@
 {% endblock %}
 {% block content %}
 <h2 class="h2-text">工具站</h2>
-<p class="p-text">工具默认在浏览器本地运行，不发请求；标注「API」的工具支持脚本调用（需 API Key）。</p>
+<p class="p-text">「浏览器处理」在本地运行不发请求，「服务器处理」需请求服务器；标注「支持API」的可脚本调用（需 API Key）。</p>
 
 <div class="tool-grid">
 	{% for t in tools %}
 	<div class="tool-card">
 		<a class="tool-card-title" href="/tools/{{ t.slug }}/">{{ t.title }}</a>
-		{% if t.kind == 'backend' %}<span class="tool-card-badge api">API</span>{% endif %}
+		{% if t.kind == 'frontend' %}<span class="tool-card-badge">浏览器处理</span>{% endif %}
+		{% if t.kind == 'backend' %}<span class="tool-card-badge server">服务器处理</span>{% endif %}
+		{% if t.api_example %}<span class="tool-card-badge api">支持API</span>{% endif %}
 		<div class="tool-card-desc">{{ t.desc }}</div>
 	</div>
 	{% endfor %}
