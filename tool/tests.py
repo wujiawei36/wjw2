@@ -1,3 +1,5 @@
+import json
+
 from django.test import TestCase
 
 from .models import ApiKey, generate_api_key, hash_api_key
@@ -454,3 +456,109 @@ class ToolAnonymousTests(TestCase):
                                 HTTP_X_API_KEY='wjw2_live_wrong')
         self.assertEqual(resp.status_code, 401)
         self.assertEqual(resp.json()['error'], 'INVALID_KEY')
+
+
+class ToolRemainingApiTests(TestCase):
+    """剩余 8 个前端工具的后端 API 计算分支"""
+
+    def setUp(self):
+        from .ratelimit import reset
+        reset()
+        self.full_key, self.key_hash = generate_api_key()
+        ApiKey.objects.create(name='test', key_hash=self.key_hash)
+
+    def _post(self, slug, payload):
+        return self.client.post(f'/tools/api/{slug}/', data=json.dumps(payload),
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+
+    def test_timestamp_to_date(self):
+        resp = self._post('timestamp', {'input': '1755564444'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertIn('local', data)
+        self.assertIn('utc', data)
+        self.assertEqual(data['unix_seconds'], 1755564444)
+
+    def test_timestamp_to_ts(self):
+        resp = self._post('timestamp', {'input': '2026-09-12 18:00:00'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertIn('seconds', data)
+        self.assertIn('milliseconds', data)
+
+    def test_timestamp_bad_input(self):
+        resp = self._post('timestamp', {'input': 'hello'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_uuid_generates(self):
+        resp = self._post('uuid', {'input': '5'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['count'], 5)
+        self.assertEqual(len(data['uuids']), 5)
+        for u in data['uuids']:
+            self.assertEqual(len(u), 36)
+
+    def test_uuid_caps_at_1000(self):
+        resp = self._post('uuid', {'input': '99999'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['data']['count'], 1000)
+
+    def test_password_generates(self):
+        resp = self._post('password', {'input': '20'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.json()['data']['password']), 20)
+
+    def test_wordcount(self):
+        resp = self._post('wordcount', {'input': 'hello 你好'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['chars'], 8)
+        self.assertEqual(data['chinese'], 2)
+        self.assertEqual(data['lines'], 1)
+
+    def test_color_hex_to_rgb(self):
+        resp = self._post('color', {'input': '#ff0000'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['r'], 255)
+        self.assertEqual(data['rgb'], 'rgb(255, 0, 0)')
+
+    def test_color_rgb_to_hex(self):
+        resp = self._post('color', {'input': 'rgb(255,0,0)'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['data']['hex'], '#FF0000')
+
+    def test_number_dec(self):
+        resp = self._post('number', {'input': '255'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['hex'], '0xFF')
+        self.assertEqual(data['oct'], '0o377')
+        self.assertEqual(data['bin'], '0b11111111')
+
+    def test_number_hex(self):
+        resp = self._post('number', {'input': '0xff'})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(resp.json()['data']['dec'], '255')
+
+    def test_regex_match(self):
+        resp = self._post('regex', {'input': 'abc\nabc123abc456'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['count'], 2)
+        self.assertEqual(data['matches'], ['abc', 'abc'])
+
+    def test_regex_invalid(self):
+        resp = self._post('regex', {'input': '[\n123'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_text_dedup(self):
+        resp = self._post('text', {'input': 'a\nb\na\nc'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['unique'], 3)
+        self.assertEqual(data['text'], 'a\nb\nc')

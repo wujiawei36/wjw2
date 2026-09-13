@@ -2,6 +2,11 @@ import base64
 import hashlib
 import json
 import logging
+import re
+import secrets
+import string
+import uuid
+from datetime import datetime, timezone as dt_timezone
 
 from django.http import JsonResponse
 from django.shortcuts import render
@@ -154,6 +159,113 @@ def tool_api(request, slug):
         else:
             return JsonResponse(
                 {'ok': False, 'error': 'BAD_PARAM', 'detail': 'mode must be "encode" or "decode"'}, status=400)
+    elif slug == 'timestamp':
+        s = text.strip()
+        if not s:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'input is required'}, status=400)
+        if re.fullmatch(r'-?\d+', s):
+            n = int(s)
+            ms = n * 1000 if abs(n) < 100_000_000_000 else n
+            try:
+                dt = datetime.fromtimestamp(ms / 1000, tz=timezone.get_current_timezone())
+            except (ValueError, OverflowError, OSError):
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'Invalid timestamp'}, status=400)
+            data = {
+                'local': dt.strftime('%Y-%m-%d %H:%M:%S'),
+                'utc': dt.astimezone(dt_timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+                'unix_seconds': int(dt.timestamp()),
+                'unix_ms': int(dt.timestamp() * 1000),
+            }
+        else:
+            try:
+                dt = datetime.fromisoformat(s.replace(' ', 'T'))
+            except ValueError:
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'Invalid date (use YYYY-MM-DD HH:mm:ss)'}, status=400)
+            if dt.tzinfo is None:
+                dt = timezone.make_aware(dt)
+            data = {
+                'seconds': int(dt.timestamp()),
+                'milliseconds': int(dt.timestamp() * 1000),
+            }
+    elif slug == 'uuid':
+        s = text.strip()
+        n = int(s) if s.isdigit() else 1
+        n = max(1, min(1000, n))
+        data = {'count': n, 'uuids': [str(uuid.uuid4()) for _ in range(n)]}
+    elif slug == 'password':
+        s = text.strip()
+        n = int(s) if s.isdigit() else 16
+        n = max(4, min(256, n))
+        upper = string.ascii_uppercase
+        lower = string.ascii_lowercase
+        digits = string.digits
+        symbols = '!@#$%^&*()-_=+[]{};:,.<>?'
+        all_chars = upper + lower + digits + symbols
+        chars = [secrets.choice(upper), secrets.choice(lower), secrets.choice(digits), secrets.choice(symbols)]
+        chars += [secrets.choice(all_chars) for _ in range(n - 4)]
+        secrets.SystemRandom().shuffle(chars)
+        data = {'password': ''.join(chars), 'length': n}
+    elif slug == 'wordcount':
+        data = {
+            'chars': len(text),
+            'bytes': len(text.encode('utf-8')),
+            'lines': len(text.split('\n')) if text else 0,
+            'no_space': len(re.sub(r'\s', '', text)),
+            'chinese': len(re.findall(r'[\u4e00-\u9fa5]', text)),
+        }
+    elif slug == 'color':
+        s = text.strip()
+        if not s:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'input is required'}, status=400)
+        if s.startswith('#'):
+            hex_s = s[1:]
+            if len(hex_s) == 3:
+                hex_s = ''.join(c + c for c in hex_s)
+            if not re.fullmatch(r'[0-9a-fA-F]{6}', hex_s):
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'Invalid HEX (use #RRGGBB or #RGB)'}, status=400)
+            r, g, b = int(hex_s[0:2], 16), int(hex_s[2:4], 16), int(hex_s[4:6], 16)
+            data = {'r': r, 'g': g, 'b': b, 'rgb': f'rgb({r}, {g}, {b})'}
+        else:
+            m = re.match(r'rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*', s, re.I)
+            if not m:
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'Use rgb(r,g,b) format'}, status=400)
+            r, g, b = (max(0, min(255, int(x))) for x in m.groups())
+            data = {'hex': '#' + ''.join(f'{v:02X}' for v in (r, g, b))}
+    elif slug == 'number':
+        s = text.strip()
+        if not s:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'input is required'}, status=400)
+        if re.fullmatch(r'0x[0-9a-f]+', s, re.I):
+            n = int(s, 16)
+        elif re.fullmatch(r'0b[01]+', s, re.I):
+            n = int(s[2:], 2)
+        elif re.fullmatch(r'0o[0-7]+', s, re.I):
+            n = int(s[2:], 8)
+        elif re.fullmatch(r'-?\d+', s):
+            n = int(s, 10)
+        else:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'Enter a decimal integer or 0x/0b/0o prefixed number'}, status=400)
+        data = {'dec': str(n), 'hex': '0x' + format(n, 'X'), 'oct': '0o' + format(n, 'o'), 'bin': '0b' + format(n, 'b')}
+    elif slug == 'regex':
+        parts = text.split('\n')
+        pattern = parts[0] if parts else ''
+        subject = '\n'.join(parts[1:])
+        if not pattern:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'First line must be the regex pattern'}, status=400)
+        try:
+            matches = [m.group(0) for m in re.finditer(pattern, subject)]
+        except re.error as e:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': f'Invalid regex: {e}'}, status=400)
+        data = {'count': len(matches), 'matches': matches}
+    elif slug == 'text':
+        lines = text.split('\n')
+        seen = set()
+        out = []
+        for line in lines:
+            if line not in seen:
+                seen.add(line)
+                out.append(line)
+        data = {'text': '\n'.join(out), 'lines': len(lines), 'unique': len(out)}
     else:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 
