@@ -1,7 +1,25 @@
 {% extends 'index/base.html' %}
 
 {% block content %}
-	<p class="p-text">
-		这里是首页。
-	</p>
+	<h1 class="h1-text">
+		欢迎来到 {{ site_name }}
+	</h1>
+
+	<div>
+		<p class="p-text">
+			这里是我的个人网站，目前主要提供一组实用的小工具。
+		</p>
+		<p class="p-text">
+			前往<a class="a-text" href="/tools/">工具站</a>，使用 JSON 格式化、时间戳转换、哈希计算、随机密码、正则测试等常用工具；除大屏时钟外均支持 API 脚本调用（需 API Key，请联系管理员申请）。
+		</p>
+	</div>
+
+	<div>
+		<h2 class="h2-text">
+			关于
+		</h2>
+		<p class="p-text">
+			了解更多信息与联系方式，请查看<a class="a-text" href="/about">关于页面</a>。
+		</p>
+	</div>
 {% endblock %}
