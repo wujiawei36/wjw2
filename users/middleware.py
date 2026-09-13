@@ -294,13 +294,10 @@ class PageVisitMiddleware(MiddlewareMixin):
 
 	def process_response(self, request, response):
 		try:
-			from .models import PageVisit
+			from .models import bump_page_visit
 			path = request.path_info or request.path or ''
 			if not path.startswith(self.EXCLUDE_PREFIXES):
-				PageVisit.objects.create(
-					path=path[:255],
-					ip=get_ip(request) or None,
-				)
+				bump_page_visit()
 				# 完整访问日志：仅普通页面（排除前缀同上），状态码+方法+路径
 				logger.info('PAGE_VISIT %s %s %s',
 				            response.status_code,

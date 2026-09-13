@@ -130,10 +130,12 @@ def dashboard(request):
     counter = ApiRequestCounter.objects.filter(pk=1).first()
     api_today = counter.today_count if (counter and counter.date == timezone.localdate()) else 0
     api_total = counter.total_count if counter else 0
+    visit = PageVisit.objects.filter(pk=1).first()
+    today_visits = visit.today_count if (visit and visit.date == timezone.localdate()) else 0
     stats = {
         'user_count': User.objects.count(),
         'today_logins': AccessLog.objects.filter(attempt_time__gte=today_start).count(),
-        'today_visits': PageVisit.objects.filter(created_at__gte=today_start).count(),
+        'today_visits': today_visits,
         'api_today': api_today,
         'api_total': api_total,
         'failures_24h': AccessFailureLog.objects.filter(attempt_time__gte=hours_24).count(),

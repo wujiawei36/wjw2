@@ -1,5 +1,6 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 import secrets
 import string
 
@@ -65,23 +66,44 @@ class Ban_IP(models.Model):
 
 
 class PageVisit(models.Model):
-    """页面访问记录（轻量埋点）：供仪表盘「今日访问」等统计使用。
+    """页面访问聚合计数器（单行记录，pk=1）：供仪表盘「今日访问」等统计使用。
 
-    由 PageVisitMiddleware 写入；静态文件/管理后台/panel/验证码路径不记录。
+    由 PageVisitMiddleware 更新；静态文件/管理后台/panel/验证码路径不记录。
     完整访问历史见 django.log（每次访问有一条 PAGE_VISIT 日志，保留 7 天），
-    因此本表只保留今日数据（cleanup_page_visits 默认清掉昨日及更早）。
+    因此这里无需逐条记录，用「统计日期 + 当日计数 + 累计计数」聚合即可，
+    不随访问量膨胀（跨天自动重置今日，累计单调递增保留总量）。
     """
-    path = models.CharField('访问路径', max_length=255)
-    ip = models.GenericIPAddressField('IP', null=True, blank=True)
-    created_at = models.DateTimeField('访问时间', auto_now_add=True, db_index=True)
+    date = models.DateField('统计日期', default=timezone.localdate)
+    today_count = models.PositiveIntegerField('今日次数', default=0)
+    total_count = models.PositiveIntegerField('累计次数', default=0)
 
     class Meta:
         verbose_name = '页面访问'
         verbose_name_plural = '页面访问'
-        ordering = ['-created_at']
 
     def __str__(self):
-        return f'{self.path} @ {self.created_at:%m-%d %H:%M}'
+        return f'{self.date} 今日 {self.today_count} / 累计 {self.total_count}'
+
+
+def bump_page_visit():
+    """每次普通页面访问计数 +1（今日与累计）。
+
+    与 tool.ApiRequestCounter 同款聚合模式：单行记录 + F() 原子更新 +
+    date 条件更新，并发下不丢计数、不重复重置，且不随访问量膨胀。
+    """
+    from django.db.models import F
+    today = timezone.localdate()
+    obj, created = PageVisit.objects.get_or_create(
+        pk=1, defaults={'date': today, 'today_count': 1, 'total_count': 1})
+    if created:
+        return
+    if obj.date != today:
+        # 跨天：仅当记录仍停在旧日期时才执行重置（并发下只放行第一个请求）
+        PageVisit.objects.filter(pk=1, date=obj.date).update(
+            date=today, today_count=1, total_count=F('total_count') + 1)
+    else:
+        PageVisit.objects.filter(pk=1).update(
+            today_count=F('today_count') + 1, total_count=F('total_count') + 1)
 
 
 class InviteCode(models.Model):

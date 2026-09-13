@@ -50,14 +50,13 @@ class AxesLockoutTests(TestCase):
 
 
 class PageVisitMiddlewareTests(TestCase):
-    """访问埋点：普通页面记录，静态/管理/panel/验证码路径不记录"""
+    """访问埋点：普通页面计数，静态/管理/panel/验证码路径不计数"""
 
     def test_normal_page_recorded(self):
         self.client.get('/')
-        self.assertEqual(PageVisit.objects.count(), 1)
-        visit = PageVisit.objects.first()
-        self.assertEqual(visit.path, '/')
-        self.assertEqual(visit.ip, '127.0.0.1')
+        c = PageVisit.objects.get(pk=1)
+        self.assertEqual(c.today_count, 1)
+        self.assertEqual(c.total_count, 1)
 
     def test_visit_logged_to_django_log(self):
         """每次访问应落一条 PAGE_VISIT 日志（django.log 保留 7 天，是表数据的完整备份）"""
@@ -71,7 +70,21 @@ class PageVisitMiddlewareTests(TestCase):
     def test_excluded_paths_not_recorded(self):
         for url in ['/static/anything.css', '/admin/login/', '/panel/', '/captcha/refresh/']:
             self.client.get(url)
-        self.assertEqual(PageVisit.objects.count(), 0)
+        self.assertFalse(PageVisit.objects.filter(pk=1).exists())
+
+    def test_cross_day_resets_today_keeps_total(self):
+        from datetime import timedelta
+        from django.utils import timezone
+        for _ in range(3):
+            self.client.get('/')
+        c = PageVisit.objects.get(pk=1)
+        self.assertEqual((c.today_count, c.total_count), (3, 3))
+        c.date = timezone.localdate() - timedelta(days=1)
+        c.save(update_fields=['date'])
+        self.client.get('/')
+        c.refresh_from_db()
+        self.assertEqual(c.today_count, 1)
+        self.assertEqual(c.total_count, 4)
 
 
 class RequestBlockingHeaderTests(TestCase):
