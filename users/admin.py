@@ -4,6 +4,7 @@ from django.contrib.sessions.models import Session
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Permission
 from django.utils.safestring import mark_safe
 from django.urls import reverse
 from django.contrib import admin, messages
@@ -107,6 +108,17 @@ class ContentTypeAdmin(admin.ModelAdmin):
     list_display = ['app_label', 'model']
     search_fields = ['app_label', 'model']
     list_filter = ['app_label']
+    def has_add_permission(self, request): return False
+    def has_change_permission(self, request, obj=None): return False
+    def has_delete_permission(self, request, obj=None): return False
+
+# 2.5 权限（只读查看）：django.contrib.auth 的 Permission 默认未注册到后台，
+# 这里只读注册，便于直接浏览系统已生成的权限点（编辑用户/组时的「权限」多选框即此模型）
+@admin.register(Permission)
+class PermissionAdmin(admin.ModelAdmin):
+    list_display = ['codename', 'name', 'content_type']
+    search_fields = ['name', 'codename']
+    list_filter = ['content_type']
     def has_add_permission(self, request): return False
     def has_change_permission(self, request, obj=None): return False
     def has_delete_permission(self, request, obj=None): return False
