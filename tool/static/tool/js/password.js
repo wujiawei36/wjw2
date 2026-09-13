@@ -1,8 +1,14 @@
 window.__tool = {
   run: function (input) {
-    var len = parseInt(input.trim(), 10);
-    if (isNaN(len) || len < 4) len = 16;
-    if (len > 256) len = 256;
+    var s = input.trim();
+    var len;
+    if (s === '') {
+      len = 16;
+    } else {
+      if (!/^\d+$/.test(s)) return '请输入整数（4~256）';
+      len = parseInt(s, 10);
+      if (len < 4 || len > 256) return '长度需在 4~256 之间';
+    }
     var upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     var lower = 'abcdefghijklmnopqrstuvwxyz';
     var digit = '0123456789';

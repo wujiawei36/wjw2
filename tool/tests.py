@@ -501,15 +501,52 @@ class ToolRemainingApiTests(TestCase):
         for u in data['uuids']:
             self.assertEqual(len(u), 36)
 
-    def test_uuid_caps_at_1000(self):
+    def test_uuid_over_limit_rejected(self):
         resp = self._post('uuid', {'input': '99999'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_uuid_non_integer_rejected(self):
+        resp = self._post('uuid', {'input': 'abc'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_uuid_below_one_rejected(self):
+        resp = self._post('uuid', {'input': '0'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_uuid_empty_defaults_to_one(self):
+        resp = self._post('uuid', {'input': ''})
         self.assertEqual(resp.status_code, 200)
-        self.assertEqual(resp.json()['data']['count'], 1000)
+        data = resp.json()['data']
+        self.assertEqual(data['count'], 1)
+        self.assertEqual(len(data['uuids']), 1)
 
     def test_password_generates(self):
         resp = self._post('password', {'input': '20'})
         self.assertEqual(resp.status_code, 200)
         self.assertEqual(len(resp.json()['data']['password']), 20)
+
+    def test_password_over_limit_rejected(self):
+        resp = self._post('password', {'input': '999'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_password_below_min_rejected(self):
+        resp = self._post('password', {'input': '3'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_password_non_integer_rejected(self):
+        resp = self._post('password', {'input': 'xyz'})
+        self.assertEqual(resp.status_code, 400)
+        self.assertEqual(resp.json()['error'], 'BAD_PARAM')
+
+    def test_password_empty_defaults_to_16(self):
+        resp = self._post('password', {'input': ''})
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.json()['data']['password']), 16)
 
     def test_wordcount(self):
         resp = self._post('wordcount', {'input': 'hello 你好'})
@@ -562,3 +599,35 @@ class ToolRemainingApiTests(TestCase):
         data = resp.json()['data']
         self.assertEqual(data['unique'], 3)
         self.assertEqual(data['text'], 'a\nb\nc')
+
+
+class ToolApiResponseDocTests(TestCase):
+    """详情页展示 API 返回包体结构（成功响应 + 失败响应 + 错误码说明）"""
+
+    def test_detail_shows_response_structure(self):
+        for slug in ['json', 'md5', 'servertime', 'ipinfo']:
+            resp = self.client.get(f'/tools/{slug}/')
+            self.assertEqual(resp.status_code, 200)
+            body = resp.content.decode()
+            self.assertIn('成功响应', body)
+            self.assertIn('失败响应', body)
+            self.assertIn('"ok": true', body)
+            self.assertIn('"ok": false', body)
+
+    def test_detail_lists_error_codes(self):
+        resp = self.client.get('/tools/json/')
+        body = resp.content.decode()
+        for code in ['MISSING_KEY', 'INVALID_KEY', 'RATE_LIMITED', 'BAD_PARAM']:
+            self.assertIn(code, body)
+
+    def test_json_detail_shows_data_structure(self):
+        resp = self.client.get('/tools/json/')
+        body = resp.content.decode()
+        self.assertIn('"data"', body)
+        self.assertIn('"text"', body)
+
+    def test_md5_detail_shows_md5_field(self):
+        resp = self.client.get('/tools/md5/')
+        body = resp.content.decode()
+        self.assertIn('"md5"', body)
+        self.assertIn('5d41402abc4b2a76b9719d911017c592', body)

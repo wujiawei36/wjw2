@@ -21,6 +21,19 @@
   -H "Content-Type: application/json" \
   -H "X-API-Key: wjw2_live_你的KEY" \
   -d '{{ tool.api_example|safe }}'</code></pre>
+
+	{% if tool.api_response %}
+	<h4 class="h4-text">成功响应</h4>
+	<pre class="tool-code"><code>{{ tool.api_response|safe }}</code></pre>
+	{% endif %}
+
+	<h4 class="h4-text">失败响应</h4>
+	<pre class="tool-code"><code>{
+  "ok": false,
+  "error": "RATE_LIMITED",
+  "detail": "可选错误详情"
+}</code></pre>
+	<p class="h5-text">常见错误码：MISSING_KEY / INVALID_KEY / KEY_DISABLED / KEY_EXPIRED / QUOTA_EXCEEDED / SLUG_NOT_ALLOWED / RATE_LIMITED / BAD_PARAM / UNSUPPORTED_SLUG</p>
 </div>
 {% endif %}
 

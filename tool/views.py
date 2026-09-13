@@ -189,13 +189,29 @@ def tool_api(request, slug):
             }
     elif slug == 'uuid':
         s = text.strip()
-        n = int(s) if s.isdigit() else 1
-        n = max(1, min(1000, n))
+        if s == '':
+            n = 1
+        else:
+            if not s.isdigit():
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                     'detail': 'count must be an integer (1~1000)'}, status=400)
+            n = int(s)
+            if n < 1 or n > 1000:
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                     'detail': 'count must be between 1 and 1000'}, status=400)
         data = {'count': n, 'uuids': [str(uuid.uuid4()) for _ in range(n)]}
     elif slug == 'password':
         s = text.strip()
-        n = int(s) if s.isdigit() else 16
-        n = max(4, min(256, n))
+        if s == '':
+            n = 16
+        else:
+            if not s.isdigit():
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                     'detail': 'length must be an integer (4~256)'}, status=400)
+            n = int(s)
+            if n < 4 or n > 256:
+                return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                     'detail': 'length must be between 4 and 256'}, status=400)
         upper = string.ascii_uppercase
         lower = string.ascii_lowercase
         digits = string.digits
