@@ -6,6 +6,10 @@
 {% endblock %}
 {% block content %}
 
+{% if tool.immersive %}
+<div id="tool-container"></div>
+{% else %}
+
 <p class="p-text"><a class="a-text" href="/tools/">返回工具列表</a></p>
 
 <h2 class="h2-text">{{ tool.title }}</h2>
@@ -53,6 +57,8 @@
 	<a class="a-text" href="/tools/{{ r.slug }}/">{{ r.title }}</a>{% if not forloop.last %}<span class="p-text"> · </span>{% endif %}
 	{% endfor %}
 </p>
+{% endif %}
+
 {% endif %}
 
 <script>

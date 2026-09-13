@@ -3,27 +3,33 @@
 
   function buildClock() {
     var wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.style.alignItems = 'center';
+    wrap.style.justifyContent = 'center';
+    wrap.style.minHeight = 'calc(100vh - 140px)';
     wrap.style.textAlign = 'center';
-    wrap.style.padding = '48px 0';
 
     var time = document.createElement('div');
-    time.style.fontSize = 'min(16vw, 150px)';
+    time.style.fontSize = 'min(16vw, 36vh)';
     time.style.fontWeight = '700';
     time.style.fontFamily = '"SF Mono", Menlo, Consolas, "Courier New", monospace';
     time.style.fontVariantNumeric = 'tabular-nums';
-    time.style.letterSpacing = '0.05em';
-    time.style.lineHeight = '1.1';
+    time.style.letterSpacing = '0.04em';
+    time.style.lineHeight = '1';
     time.style.color = '#000';
 
     var date = document.createElement('div');
-    date.style.fontSize = 'min(5vw, 36px)';
+    date.style.fontSize = 'min(4.5vw, 9vh)';
     date.style.color = '#000000b0';
-    date.style.marginTop = '16px';
+    date.style.marginTop = '2vh';
+    date.style.fontFamily = '"SF Mono", Menlo, Consolas, monospace';
+    date.style.fontVariantNumeric = 'tabular-nums';
 
     var week = document.createElement('div');
-    week.style.fontSize = 'min(4vw, 28px)';
+    week.style.fontSize = 'min(3.5vw, 7vh)';
     week.style.color = '#00000090';
-    week.style.marginTop = '8px';
+    week.style.marginTop = '1vh';
 
     wrap.appendChild(time);
     wrap.appendChild(date);

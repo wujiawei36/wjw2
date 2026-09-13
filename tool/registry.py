@@ -12,6 +12,8 @@ kind 取值：
 - api_example：详情页 curl 示例的 -d 参数
 - api_response：详情页展示的 API 成功响应结构（data 字段示例）
 - allow_anonymous：backend 工具允许浏览器免 Key 手动获取（按 IP 限频）
+- immersive：展示型工具（如大屏时钟），详情页只渲染工具本体，
+  不渲染标题/介绍/操作说明/相关工具等装饰区块
 """
 TOOLS = [
     {'slug': 'json', 'title': 'JSON 格式化', 'desc': '格式化 / 校验 JSON', 'kind': 'frontend',
@@ -210,6 +212,7 @@ TOOLS = [
   }
 }'''},
     {'slug': 'clock', 'title': '大屏时钟', 'desc': '大屏显示当前时间', 'kind': 'frontend',
+     'immersive': True,
      'intro': '大屏显示当前时间（时:分:秒）与日期、星期，每秒自动刷新。纯浏览器本地运行，不发请求、无需 API Key，适合投屏或全屏展示（按 F11 全屏）。',
      'usage': ['打开页面即自动显示当前时间，无需操作', '适合投屏 / 全屏展示（F11）', '字号随窗口大小自适应缩放'],
      'related': ['servertime', 'timestamp']},
