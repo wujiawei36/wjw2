@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 from utils.get_ip import get_ip
@@ -181,3 +181,19 @@ def auth_register(request):
 		return redirect('/')
 
 	return render(request, 'registration/register.html', get_captchas())
+
+
+def user_profile(request, user_id):
+	"""用户主页：展示用户名/编号/最后登录时间；有 view_customuser 权限者额外看权限信息。
+
+	右上角用户名链接指向 /user/<id>/。基础信息（用户名、编号、最后登录时间）
+	对所有访问者可见（含未登录）；can_develop/superuser/active 等权限信息仅当
+	访问者具备 view_customuser 权限（如超级用户或已授权的管理员）时展示。
+	匿名访问者 has_perm 恒为 False，天然看不到权限信息。
+	"""
+	profile_user = get_object_or_404(User, id=user_id)
+	can_view_user = request.user.has_perm('users.view_customuser')
+	return render(request, 'users/profile.html', {
+		'profile_user': profile_user,
+		'can_view_user': can_view_user,
+	})

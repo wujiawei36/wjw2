@@ -207,3 +207,61 @@ class InviteCodeLogMaskTests(TestCase):
         body = resp.content.decode()
         # 完整邀请码绝不能出现在 dashboard（事件流含 LogEntry 展示）
         self.assertNotIn(code.code, body)
+
+
+class UserProfileTests(TestCase):
+    """用户主页：基础信息登录可见，权限信息仅 view_customuser 权限者可见"""
+
+    def setUp(self):
+        from django.contrib.auth.models import Permission
+        self.alice = User.objects.create_user(username='alice', password='pass-alice-123456')
+        # 只读观察员：仅授 view_customuser，用于验证权限信息对授权者可见
+        self.observer = User.objects.create_user(username='profile_observer', password='pass-observer-123456', is_staff=True)
+        self.observer.user_permissions.add(Permission.objects.get(codename='view_customuser'))
+
+    def test_anonymous_can_view_basic_info(self):
+        # 未登录也能查看主页基础信息，但看不到权限信息
+        resp = self.client.get(f'/user/{self.alice.id}/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn('用户名', body)
+        self.assertIn('最后登录时间', body)
+        self.assertNotIn('can_develop', body)
+        self.assertNotIn('superuser', body)
+        self.assertNotIn('active', body)
+
+    def test_basic_info_only_for_normal_user(self):
+        self.client.force_login(self.alice)
+        resp = self.client.get(f'/user/{self.alice.id}/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn('用户名', body)
+        self.assertIn('编号', body)
+        self.assertIn('最后登录时间', body)
+        # 普通用户无 view_customuser，不得显示权限信息
+        self.assertNotIn('can_develop', body)
+        self.assertNotIn('superuser', body)
+        self.assertNotIn('active', body)
+
+    def test_observer_sees_permission_info(self):
+        self.client.force_login(self.observer)
+        resp = self.client.get(f'/user/{self.alice.id}/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn('can_develop', body)
+        self.assertIn('superuser', body)
+        self.assertIn('active', body)
+
+    def test_superuser_sees_permission_info(self):
+        root = User.objects.create_user(username='profile_root', password='pass-root-123456', is_staff=True, is_superuser=True)
+        self.client.force_login(root)
+        resp = self.client.get(f'/user/{self.alice.id}/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn('can_develop', body)
+        self.assertIn('superuser', body)
+
+    def test_nonexistent_user_404(self):
+        self.client.force_login(self.alice)
+        resp = self.client.get('/user/99999999/')
+        self.assertEqual(resp.status_code, 404)
