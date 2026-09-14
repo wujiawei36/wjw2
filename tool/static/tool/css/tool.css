@@ -129,3 +129,6 @@
 .tool-card-badge.server {
 	background: #007bff;
 }
+.tool-card-badge.rate {
+	background: #e8590c;
+}

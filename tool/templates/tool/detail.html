@@ -42,6 +42,13 @@
 </div>
 {% endif %}
 
+{% if rate_limit_text %}
+<h3 class="h3-text">限频</h3>
+<p class="p-text">
+	{% if tool.kind == 'backend' %}手动获取（按 IP）与 API 调用（按 Key）均限频 <strong>{{ rate_limit_text }}</strong>。{% else %}浏览器本地使用不限频；API 调用限频 <strong>{{ rate_limit_text }}</strong>。{% endif %}
+</p>
+{% endif %}
+
 {% if tool.usage %}
 <h3 class="h3-text">操作说明</h3>
 <ol class="tool-usage">

@@ -17,7 +17,7 @@ from django.views.decorators.http import require_POST
 from utils.get_ip import get_ip
 from .models import ApiKey, hash_api_key, bump_api_counter
 from .ratelimit import allow as rate_allow
-from .registry import TOOLS, get_tool
+from .registry import TOOLS, get_tool, format_rate_limit
 
 logger = logging.getLogger(__name__)
 
@@ -33,14 +33,15 @@ PASSWORD_CHARSETS = {
 
 
 def tool_index(request):
-    return render(request, 'tool/index.html', {'tools': TOOLS})
+    tools = [{**t, 'rate_limit_text': format_rate_limit(t)} for t in TOOLS]
+    return render(request, 'tool/index.html', {'tools': tools})
 
 
 def tool_detail(request, slug):
     tool = get_tool(slug)
     if tool is None:
         return render(request, 'tool/not_found.html', status=404)
-    context = {'tool': tool}
+    context = {'tool': tool, 'rate_limit_text': format_rate_limit(tool)}
     if tool['kind'] == 'frontend':
         # 用 static() 生成带 manifest hash 的完整静态 URL（生产 manifest 存储要求精确文件名）
         context['tool_js'] = static(f"tool/js/{slug}.js")

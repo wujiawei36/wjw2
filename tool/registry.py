@@ -226,3 +226,17 @@ def get_tool(slug):
         if tool['slug'] == slug:
             return tool
     return None
+
+
+def format_rate_limit(tool):
+    """把 rate_limit 格式化为人类可读文本，如 '30 次/分钟'、'30 次/30秒'。无 rate_limit 返回 None。"""
+    rl = tool.get('rate_limit')
+    if not rl:
+        return None
+    window, max_c = rl['window'], rl['max']
+    if window >= 60 and window % 60 == 0:
+        m = window // 60
+        win = '分钟' if m == 1 else f'{m} 分钟'
+    else:
+        win = f'{window} 秒'
+    return f'{max_c} 次/{win}'
