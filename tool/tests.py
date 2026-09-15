@@ -442,8 +442,8 @@ class ToolAnonymousTests(TestCase):
         self.assertIn('user_agent', data['data'])
 
     def test_anonymous_rate_limited_by_ip(self):
-        # servertime 匿名按 IP 限频 30 次/60秒，第 31 次 429
-        for _ in range(30):
+        # servertime 匿名按 IP 限频 5 次/60秒，第 6 次 429
+        for _ in range(5):
             resp = self.client.post('/tools/api/servertime/', data='{}',
                                     content_type='application/json')
             self.assertEqual(resp.status_code, 200)

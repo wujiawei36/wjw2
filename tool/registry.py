@@ -185,7 +185,7 @@ TOOLS = [
 }'''},
     {'slug': 'servertime', 'title': '服务器时间', 'desc': '服务器 UTC/本地时间', 'kind': 'backend',
      'allow_anonymous': True,                   # 浏览器免 Key 手动获取（按 IP 限频）
-     'rate_limit': {'window': 60, 'max': 30},   # 手动获取与 API 统一限频
+     'rate_limit': {'window': 60, 'max': 5},    # 手动获取与 API 统一限频（降频防刷）
      'intro': '查看服务器当前的 UTC / 本地时间与 Unix 时间戳。浏览器无法直接读取服务器时间，故手动获取也需请求服务器（免 Key，按 IP 限频）。',
      'usage': ['页面点击「获取」查看服务器时间（免 Key，按 IP 限频）', '或脚本调用：POST /tools/api/servertime/ 携带 X-API-Key（body 可为 {}）'],
      'related': ['timestamp'],
@@ -201,7 +201,7 @@ TOOLS = [
 }'''},
     {'slug': 'ipinfo', 'title': '我的 IP', 'desc': '查看访客真实 IP', 'kind': 'backend',
      'allow_anonymous': True,                   # 浏览器免 Key 手动获取（按 IP 限频）
-     'rate_limit': {'window': 60, 'max': 30},   # 手动获取与 API 统一限频
+     'rate_limit': {'window': 60, 'max': 5},    # 手动获取与 API 统一限频（降频防刷）
      'intro': '查看访客的真实公网 IP 与 User-Agent（服务器视角）。浏览器无法直接获取公网 IP，故手动获取也需请求服务器（免 Key，按 IP 限频）。',
      'usage': ['页面点击「获取」查看真实 IP（免 Key，按 IP 限频）', '或脚本调用：POST /tools/api/ipinfo/ 携带 X-API-Key（body 可为 {}）'],
      'related': ['servertime'],
