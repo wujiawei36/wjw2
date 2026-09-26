@@ -1,10 +1,13 @@
 from django.contrib.auth import authenticate, login, logout, get_user_model, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
+from django.contrib.sessions.models import Session
+from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
+from datetime import timedelta
 from django.shortcuts import render, redirect, get_object_or_404
 from django_otp import match_token
 from django_otp.plugins.otp_totp.models import TOTPDevice
@@ -399,3 +402,59 @@ def two_factor_setup(request):
 	# GET：展示当前状态
 	context['setup_step'] = 'enabled' if _user_has_2fa(user) else 'start'
 	return render(request, 'users/two_factor_setup.html', context)
+
+
+@login_required
+def user_sessions(request):
+	"""会话管理：列出当前用户的所有活跃会话，支持踢出指定设备（删除对应 Session）。
+
+	Session 数据由 SessionInfoMiddleware 写入 ip_address / user_agent；
+	遍历未过期 Session 并 decode 匹配 _auth_user_id 即为本人会话。
+	"""
+	if request.method == 'POST':
+		session_key = request.POST.get('session_key', '')
+		# 当前会话不允许在此踢出（应走「退出登录」）
+		if session_key and session_key != request.session.session_key:
+			s = Session.objects.filter(session_key=session_key).first()
+			if s is not None:
+				data = s.get_decoded()
+				if str(data.get('_auth_user_id')) == str(request.user.id):
+					s.delete()
+					logger.info('SESSION_KICKED 用户[%s](id=%s) 踢出会话[%s] 来自IP[%s]',
+					            request.user.username, request.user.id, session_key[:8], get_ip(request))
+
+	sessions = []
+	now = timezone.now()
+	cookie_age = timedelta(seconds=getattr(settings, 'SESSION_COOKIE_AGE', 1209600))
+	for s in Session.objects.filter(expire_date__gt=now).order_by('-expire_date'):
+		data = s.get_decoded()
+		if str(data.get('_auth_user_id')) == str(request.user.id):
+			sessions.append({
+				'session_key': s.session_key,
+				'ip': data.get('ip_address', '未知'),
+				'user_agent': data.get('user_agent', '未知'),
+				'last_activity': s.expire_date - cookie_age,
+				'is_current': s.session_key == request.session.session_key,
+			})
+
+	return render(request, 'users/sessions.html', {'sessions': sessions})
+
+
+@login_required
+def login_history(request):
+	"""登录历史：展示本人最近 20 条成功登录记录（axes AccessLog）。
+
+	失败尝试在 AccessFailureLog，不给普通用户看（避免泄露他人探测痕迹）。
+	"""
+	from axes.models import AccessLog
+	records = AccessLog.objects.filter(username=request.user.username).order_by('-attempt_time')[:20]
+	history = [
+		{
+			'ip': r.ip_address,
+			'user_agent': r.user_agent,
+			'attempt_time': r.attempt_time,
+			'logout_time': r.logout_time,
+		}
+		for r in records
+	]
+	return render(request, 'users/login_history.html', {'history': history})

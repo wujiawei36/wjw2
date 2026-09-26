@@ -1,10 +1,13 @@
 import base64
 import hashlib
+import io
 import json
 import logging
 import re
 import secrets
 import uuid
+
+import qrcode
 from datetime import datetime, timezone as dt_timezone
 
 from django.http import JsonResponse
@@ -42,7 +45,7 @@ def tool_detail(request, slug):
     if tool is None:
         return render(request, 'tool/not_found.html', status=404)
     context = {'tool': tool, 'rate_limit_text': format_rate_limit(tool)}
-    if tool['kind'] == 'frontend':
+    if tool['kind'] == 'frontend' or tool.get('tool_js'):
         # 用 static() 生成带 manifest hash 的完整静态 URL（生产 manifest 存储要求精确文件名）
         context['tool_js'] = static(f"tool/js/{slug}.js")
     # related：把 slug 转成 {slug, title} 供模板渲染链接
@@ -316,6 +319,16 @@ def tool_api(request, slug):
                 seen.add(line)
                 out.append(line)
         data = {'text': '\n'.join(out), 'lines': len(lines), 'unique': len(out)}
+    elif slug == 'qrcode':
+        if not text:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM', 'detail': 'input is required'}, status=400)
+        qr = qrcode.QRCode(version=1, box_size=10, border=4)
+        qr.add_data(text)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color='black', back_color='white')
+        buf = io.BytesIO()
+        img.save(buf, format='PNG')
+        data = {'png': 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()}
     else:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 

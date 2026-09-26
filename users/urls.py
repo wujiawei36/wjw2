@@ -11,5 +11,7 @@ urlpatterns = [
 	path('settings/',views.user_settings,name='settings'),
 	path('settings/password/',views.user_change_password,name='change_password'),
 	path('settings/2fa/',views.two_factor_setup,name='two_factor_setup'),
+	path('settings/sessions/',views.user_sessions,name='sessions'),
+	path('settings/login-history/',views.login_history,name='login_history'),
 	path('<int:user_id>/',views.user_profile,name='user_profile'),
 ]

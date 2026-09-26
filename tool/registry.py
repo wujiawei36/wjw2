@@ -218,6 +218,20 @@ TOOLS = [
      'intro': '大屏显示当前时间（时:分:秒）与日期、星期，每秒自动刷新。纯浏览器本地运行，不发请求、无需 API Key，适合投屏或全屏展示（按 F11 全屏）。',
      'usage': ['打开页面即自动显示当前时间，无需操作', '适合投屏 / 全屏展示（F11）', '字号随窗口大小自适应缩放'],
      'related': ['servertime', 'timestamp']},
+    {'slug': 'qrcode', 'title': '二维码生成', 'desc': '文本 / 网址转二维码', 'kind': 'backend',
+     'tool_js': True,                           # backend 工具自定义前端渲染（生成图片，非 textarea 输出）
+     'allow_anonymous': True,                   # 浏览器免 Key 生成（后端 qrcode 库，按 IP 限频）
+     'rate_limit': {'window': 60, 'max': 10},   # 生成在服务器端完成，比前端直算贵，降频防刷
+     'intro': '把文本或网址生成二维码图片。生成在服务器端完成（复用 qrcode 库），浏览器免 Key、按 IP 限频；也支持脚本带 Key 批量调用。',
+     'usage': ['输入要编码的文本或网址', '点击「生成二维码」', '扫码验证，可下载 PNG 图片'],
+     'related': ['base64', 'text'],
+     'api_example': '{"input":"https://example.com"}',
+     'api_response': '''{
+  "ok": true,
+  "data": {
+    "png": "data:image/png;base64,..."
+  }
+}'''},
 ]
 
 

@@ -1,0 +1,28 @@
+{% extends 'index/base.html' %}
+
+{% block head %}
+<title>登录历史 - {{ site_name }}</title>
+{% endblock %}
+
+{% block content %}
+	<h1 class="h1-text">登录历史</h1>
+
+	<p class="p-text">以下是最近 20 次成功登录记录。若发现可疑登录，请立即修改密码并检查两步验证。</p>
+
+	{% if history %}
+		<ul>
+			{% for h in history %}
+				<li class="li-text">
+					{{ h.attempt_time|date:"Y-m-d H:i" }} · IP：{{ h.ip }}
+					{% if h.logout_time %} · 已登出{% else %} · 会话进行中{% endif %}
+					<br>
+					{{ h.user_agent }}
+				</li>
+			{% endfor %}
+		</ul>
+	{% else %}
+		<p class="p-text">暂无登录记录。</p>
+	{% endif %}
+
+	<p class="p-text"><a class="a-text" href="{% url 'users:settings' %}">返回设置</a></p>
+{% endblock %}

@@ -149,10 +149,14 @@
     return section;
   }
 
-  // 后端工具：浏览器无法直算（服务器时间/真实 IP 等）
-  // 若允许匿名（allow_anonymous），渲染「获取」按钮（免 Key，后端按 IP 限频）
+  // 后端工具：浏览器无法直算（服务器时间/真实 IP/二维码生成等）
+  // 若提供自定义渲染（window.__tool.render），优先用之（如二维码生成图片）；
+  // 否则若允许匿名（allow_anonymous），渲染「获取」按钮（免 Key，后端按 IP 限频）
   if (kind === 'backend') {
-    if (window.__TOOL_ANON) {
+    var bt = window.__tool;
+    if (bt && typeof bt.render === 'function') {
+      container.appendChild(bt.render());
+    } else if (window.__TOOL_ANON) {
       container.appendChild(makeFetchPanel(slug));
     }
     return;
