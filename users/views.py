@@ -412,16 +412,32 @@ def user_sessions(request):
 	遍历未过期 Session 并 decode 匹配 _auth_user_id 即为本人会话。
 	"""
 	if request.method == 'POST':
-		session_key = request.POST.get('session_key', '')
-		# 当前会话不允许在此踢出（应走「退出登录」）
-		if session_key and session_key != request.session.session_key:
-			s = Session.objects.filter(session_key=session_key).first()
-			if s is not None:
+		action = request.POST.get('action', 'kick_one')
+		if action == 'kick_all':
+			# 登出所有其它设备（保留当前会话）
+			now = timezone.now()
+			kicked = 0
+			for s in Session.objects.filter(expire_date__gt=now):
+				if s.session_key == request.session.session_key:
+					continue
 				data = s.get_decoded()
 				if str(data.get('_auth_user_id')) == str(request.user.id):
 					s.delete()
-					logger.info('SESSION_KICKED 用户[%s](id=%s) 踢出会话[%s] 来自IP[%s]',
-					            request.user.username, request.user.id, session_key[:8], get_ip(request))
+					kicked += 1
+			if kicked:
+				logger.info('SESSION_KICKED_ALL 用户[%s](id=%s) 登出%d个其它会话 来自IP[%s]',
+				            request.user.username, request.user.id, kicked, get_ip(request))
+		else:
+			session_key = request.POST.get('session_key', '')
+			# 当前会话不允许在此踢出（应走「退出登录」）
+			if session_key and session_key != request.session.session_key:
+				s = Session.objects.filter(session_key=session_key).first()
+				if s is not None:
+					data = s.get_decoded()
+					if str(data.get('_auth_user_id')) == str(request.user.id):
+						s.delete()
+						logger.info('SESSION_KICKED 用户[%s](id=%s) 踢出会话[%s] 来自IP[%s]',
+						            request.user.username, request.user.id, session_key[:8], get_ip(request))
 
 	sessions = []
 	now = timezone.now()
@@ -437,7 +453,8 @@ def user_sessions(request):
 				'is_current': s.session_key == request.session.session_key,
 			})
 
-	return render(request, 'users/sessions.html', {'sessions': sessions})
+	other_count = sum(1 for s in sessions if not s['is_current'])
+	return render(request, 'users/sessions.html', {'sessions': sessions, 'other_count': other_count})
 
 
 @login_required
