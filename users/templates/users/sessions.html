@@ -96,11 +96,11 @@
 
 	<p class="p-text">以下是你当前登录的设备列表。踢出某个设备后，该设备会立即退出登录。</p>
 
-	{% if other_count %}
-		<form action="" method="post" onsubmit="return confirm('确定登出所有其它设备吗？当前设备将保留。')">
+	{% if sessions %}
+		<form action="" method="post" onsubmit="return confirm('确定登出全部设备吗？你将在所有设备上退出登录，包括当前设备。')">
 			{% csrf_token %}
 			<input type="hidden" name="action" value="kick_all">
-			<input type="submit" class="btn-kick-all" value="登出所有其它设备（{{ other_count }}）">
+			<input type="submit" class="btn-kick-all" value="登出全部设备">
 		</form>
 	{% endif %}
 

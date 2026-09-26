@@ -414,19 +414,19 @@ def user_sessions(request):
 	if request.method == 'POST':
 		action = request.POST.get('action', 'kick_one')
 		if action == 'kick_all':
-			# 登出所有其它设备（保留当前会话）
+			# 登出全部会话（含当前设备）
 			now = timezone.now()
 			kicked = 0
 			for s in Session.objects.filter(expire_date__gt=now):
-				if s.session_key == request.session.session_key:
-					continue
 				data = s.get_decoded()
 				if str(data.get('_auth_user_id')) == str(request.user.id):
 					s.delete()
 					kicked += 1
 			if kicked:
-				logger.info('SESSION_KICKED_ALL 用户[%s](id=%s) 登出%d个其它会话 来自IP[%s]',
+				logger.info('SESSION_KICKED_ALL 用户[%s](id=%s) 登出%d个会话(含当前) 来自IP[%s]',
 				            request.user.username, request.user.id, kicked, get_ip(request))
+			logout(request)
+			return redirect('users:login')
 		else:
 			session_key = request.POST.get('session_key', '')
 			# 当前会话不允许在此踢出（应走「退出登录」）
@@ -453,8 +453,7 @@ def user_sessions(request):
 				'is_current': s.session_key == request.session.session_key,
 			})
 
-	other_count = sum(1 for s in sessions if not s['is_current'])
-	return render(request, 'users/sessions.html', {'sessions': sessions, 'other_count': other_count})
+	return render(request, 'users/sessions.html', {'sessions': sessions})
 
 
 @login_required
