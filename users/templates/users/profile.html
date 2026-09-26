@@ -5,33 +5,33 @@
 {% endblock %}
 
 {% block content %}
-	<h1 class="h1-text" data-page-node-id="J8hyOVT0E35xNFHtsHHOqV">{{ profile_user.username }} 的主页</h1>
+	<h1 class="h1-text">{{ profile_user.username }} 的主页</h1>
 
 	{% if user.is_authenticated and user.id == profile_user.id %}
-		<p class="p-text" data-page-node-id="rX4Ie2uP4rcuQGwHe4fTBE"><a class="a-text" href="{% url 'users:settings' %}" data-page-node-id="ZeOByyMk7Hyc6X5675rHvS">设置</a></p>
+		<p class="p-text"><a class="a-text" href="{% url 'users:settings' %}">设置</a></p>
 	{% endif %}
 
-	<h2 class="h2-text" data-page-node-id="CdlLgKI1jF4ZDVtpZODyBD">基本信息</h2>
-	<ul data-page-node-id="pc8DEUoU9335qiD36nwz4K">
-		<li class="li-text" data-page-node-id="MPGdNgdwFNcuRUZJmOfL5j">用户名：{{ profile_user.username }}</li>
-		<li class="li-text" data-page-node-id="suDTZWJqdNH8AUZhfPItLw">编号：{{ profile_user.id }}</li>
-		<li class="li-text" data-page-node-id="A6wp8FvWC6juWn4bBP8QK8">最后登录时间：{{ profile_user.last_login|date:"Y-m-d H:i:s"|default:"从未登录" }}</li>
+	<h2 class="h2-text">基本信息</h2>
+	<ul>
+		<li class="li-text">用户名：{{ profile_user.username }}</li>
+		<li class="li-text">编号：{{ profile_user.id }}</li>
+		<li class="li-text">最后登录时间：{{ profile_user.last_login|date:"Y-m-d H:i:s"|default:"从未登录" }}</li>
 	</ul>
 
 	{% if can_view_user %}
-	<h2 class="h2-text" data-page-node-id="0ykrJiNsqiLT8TNXT65DR2">权限信息</h2>
-	<ul data-page-node-id="DPaRnlO74qdBcJ5T8plDPj">
-		<li class="li-text" data-page-node-id="rVtgWHQGLCY6PDkebJpqS7">
+	<h2 class="h2-text">权限信息</h2>
+	<ul>
+		<li class="li-text">
 			可开发（can_develop）：
-			{% if profile_user.can_develop %}<span class="yes" data-page-node-id="gOS0YXvt82UxqtF7Sxq6bO">是</span>{% else %}<span class="no" data-page-node-id="D2XFgLS6G9eJWT9Qsia1qn">否</span>{% endif %}
+			{% if profile_user.can_develop %}<span class="yes">是</span>{% else %}<span class="no">否</span>{% endif %}
 		</li>
-		<li class="li-text" data-page-node-id="DpAQS7NrCKHHbE3HZtI0n0">
+		<li class="li-text">
 			超级用户（superuser）：
-			{% if profile_user.is_superuser %}<span class="yes" data-page-node-id="hwoAk291U4xreRyfxiJtZ3">是</span>{% else %}<span class="no" data-page-node-id="yqB7kxQ702FzkD2Zqsz0dd">否</span>{% endif %}
+			{% if profile_user.is_superuser %}<span class="yes">是</span>{% else %}<span class="no">否</span>{% endif %}
 		</li>
-		<li class="li-text" data-page-node-id="PqeE4rU8yyCZpnwSQUFDAE">
+		<li class="li-text">
 			激活状态（active）：
-			{% if profile_user.is_active %}<span class="yes" data-page-node-id="RFKeRofj8glzq1CbGqfqae">正常</span>{% else %}<span class="no" data-page-node-id="gnerBhsTaG7Vdf7ArtCNwP">禁用</span>{% endif %}
+			{% if profile_user.is_active %}<span class="yes">正常</span>{% else %}<span class="no">禁用</span>{% endif %}
 		</li>
 	</ul>
 	{% endif %}
