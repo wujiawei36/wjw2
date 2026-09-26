@@ -329,6 +329,27 @@ def tool_api(request, slug):
         buf = io.BytesIO()
         img.save(buf, format='PNG')
         data = {'png': 'data:image/png;base64,' + base64.b64encode(buf.getvalue()).decode()}
+    elif slug == 'jwt':
+        parts = text.strip().split('.')
+        if len(parts) != 3:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'JWT 应为 header.payload.signature 三段式'}, status=400)
+
+        def _b64url_decode(s):
+            s += '=' * (-len(s) % 4)
+            return base64.urlsafe_b64decode(s).decode('utf-8')
+
+        try:
+            header = json.loads(_b64url_decode(parts[0]))
+            payload = json.loads(_b64url_decode(parts[1]))
+        except Exception:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'Header/Payload 不是有效的 base64url 或 JSON'}, status=400)
+        data = {
+            'header': json.dumps(header, indent=2, ensure_ascii=False),
+            'payload': json.dumps(payload, indent=2, ensure_ascii=False),
+            'signature': parts[2],
+        }
     else:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 

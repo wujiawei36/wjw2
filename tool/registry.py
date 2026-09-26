@@ -232,6 +232,20 @@ TOOLS = [
     "png": "data:image/png;base64,..."
   }
 }'''},
+    {'slug': 'jwt', 'title': 'JWT 解码', 'desc': '解码 JWT（只看不验签）', 'kind': 'frontend',
+     'intro': '把 JWT 拆解为 Header、Payload、Signature 三部分并解码查看。仅解码、不验签——签名是否有效需你自行核实，切勿仅凭此工具的结果就信任一个 Token。',
+     'usage': ['粘贴完整 JWT（header.payload.signature 三段式）', '点击「解码」', '查看 Header / Payload 明文及签名原文，Payload 中的时间字段会换算为可读时间并提示是否过期'],
+     'related': ['base64', 'json'],
+     'rate_limit': {'window': 60, 'max': 30},
+     'api_example': '{"input":"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"}',
+     'api_response': '''{
+  "ok": true,
+  "data": {
+    "header": "{\\"alg\\": \\"HS256\\", \\"typ\\": \\"JWT\\"}",
+    "payload": "{\\"sub\\": \\"1234567890\\", \\"name\\": \\"John Doe\\", \\"iat\\": 1516239022}",
+    "signature": "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+  }
+}'''},
 ]
 
 
