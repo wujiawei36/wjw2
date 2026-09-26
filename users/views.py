@@ -1,4 +1,5 @@
-from django.contrib.auth import authenticate, login, logout, get_user_model
+from django.contrib.auth import authenticate, login, logout, get_user_model, update_session_auth_hash
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -197,3 +198,40 @@ def user_profile(request, user_id):
 		'profile_user': profile_user,
 		'can_view_user': can_view_user,
 	})
+
+
+@login_required
+def user_settings(request):
+	"""用户设置列表页：当前仅提供「修改密码」入口，后续可扩展 2FA 等。"""
+	return render(request, 'users/settings.html')
+
+
+@login_required
+def user_change_password(request):
+	"""修改密码：校验原密码 → 两次新密码一致 → 密码强度 → 更新并保持登录态。"""
+	if request.method == 'POST':
+		old_password = request.POST.get('old_password', '')
+		new_password1 = request.POST.get('new_password1', '')
+		new_password2 = request.POST.get('new_password2', '')
+
+		if not old_password or not new_password1 or not new_password2:
+			return render(request, 'users/change_password.html', {'errors': '输入项不能为空'})
+		if not request.user.check_password(old_password):
+			return render(request, 'users/change_password.html', {'errors': '原密码错误'})
+		if new_password1 != new_password2:
+			return render(request, 'users/change_password.html', {'errors': '两次输入的新密码不一致'})
+		if new_password1 == old_password:
+			return render(request, 'users/change_password.html', {'errors': '新密码不能与原密码相同'})
+		try:
+			validate_password(new_password1, user=request.user)
+		except ValidationError as e:
+			return render(request, 'users/change_password.html', {'errors': ' '.join(e.messages)})
+
+		request.user.set_password(new_password1)
+		request.user.save(update_fields=['password'])
+		update_session_auth_hash(request, request.user)
+		logger.info('PASSWORD_CHANGE 用户[%s](id=%s) 来自IP[%s] 修改密码成功',
+		            request.user.username, request.user.id, get_ip(request))
+		return render(request, 'users/change_password.html', {'success': '密码修改成功'})
+
+	return render(request, 'users/change_password.html')

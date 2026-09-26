@@ -1,0 +1,16 @@
+{% extends 'index/base.html' %}
+
+{% block head %}
+<title>设置 - {{ site_name }}</title>
+{% endblock %}
+
+{% block content %}
+	<h1 class="h1-text">设置</h1>
+
+	<h2 class="h2-text">账号与安全</h2>
+	<ul>
+		<li class="li-text">
+			<a class="a-text" href="{% url 'users:change_password' %}">修改密码</a>
+		</li>
+	</ul>
+{% endblock %}
