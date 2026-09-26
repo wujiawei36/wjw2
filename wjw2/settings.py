@@ -237,6 +237,10 @@ OTP_TOTP_ISSUER = 'wujiawei的网站'
 OTP_TOTP_THROTTLE_FACTOR = 0
 OTP_STATIC_THROTTLE_FACTOR = 0
 
+# 后台隐藏 2FA 敏感数据：TOTPDevice 的 secret key、二维码，以及 StaticDevice 的恢复代码
+# 一律不在 admin 展示（即使有 view 权限也看不到明文，防止管理员泄露用户密钥/恢复代码）
+OTP_ADMIN_HIDE_SENSITIVE_DATA = True
+
 STATIC_ROOT=os.path.join(BASE_DIR,'staticfiles')
 
 DEVELOPERS=[os.getenv('DEVELOPER_1')]

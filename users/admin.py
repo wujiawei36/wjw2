@@ -268,3 +268,38 @@ class AccessLogAdmin(ReadOnlyAxesAdmin):
     list_display = ["username", "ip_address", "attempt_time", "logout_time"]
     list_filter = ["attempt_time"]
     search_fields = ["username", "ip_address"]
+
+
+# ==================== django-otp 设备（只读） ====================
+# TOTP 动态验证码设备 / Static 恢复代码设备：后台彻底只读，连 superuser 也不能增删改。
+# 原因：TOTPDevice.key 是用户 2FA 密钥（hex 明文）、StaticToken.token 是恢复代码明文，
+# 若有增删改权限，可被用来接管他人 2FA（改 key / 塞设备）或删除设备锁死账号；
+# 甚至 view 权限 + 默认 inline 会直接泄露恢复代码。这些设备只能由用户本人通过
+# 前台「两步验证」页管理。这里只暴露身份/状态字段，密钥与恢复代码一律不展示。
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp.plugins.otp_static.models import StaticDevice
+
+
+class ReadOnlyOTPDeviceAdmin(admin.ModelAdmin):
+    # 只展示身份与状态字段；secret key / 二维码 / 恢复代码一律不暴露
+    list_display = ["user", "name", "confirmed", "created_at", "last_used_at"]
+    list_filter = ["confirmed"]
+    search_fields = ["user__username", "name"]
+    fields = ["user", "name", "confirmed", "created_at", "last_used_at"]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+for _model in (TOTPDevice, StaticDevice):
+    try:
+        admin.site.unregister(_model)
+    except admin.sites.NotRegistered:
+        pass
+    admin.site.register(_model, ReadOnlyOTPDeviceAdmin)
