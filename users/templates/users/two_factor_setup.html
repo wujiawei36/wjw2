@@ -1,0 +1,70 @@
+{% extends 'index/base.html' %}
+
+{% block head %}
+<title>两步验证 - {{ site_name }}</title>
+{% endblock %}
+
+{% block content %}
+	<h1 class="h1-text">两步验证</h1>
+
+	{% if setup_step == 'start' %}
+		{% if success %}<p class="p-text">{{ success }}</p>{% endif %}
+		{% if errors %}<p class="p-text">错误：{{ errors }}</p>{% endif %}
+
+		<p class="p-text">两步验证为登录增加一层保护：除密码外，还需输入验证器生成的 6 位动态码。</p>
+		<p class="p-text">启用后请务必妥善保存生成的恢复代码，用于手机丢失等无法获取动态码时的应急登录。</p>
+
+		<form action="" method="post">
+			{% csrf_token %}
+			<input type="hidden" name="action" value="enable">
+			<input type="submit" value="启用两步验证">
+		</form>
+
+	{% elif setup_step == 'confirm' %}
+		{% if errors %}<p class="p-text">错误：{{ errors }}</p>{% endif %}
+
+		<p class="p-text">用验证器 App 扫描下方二维码，或手动输入密钥：</p>
+		<img src="{{ qr_data_uri }}" alt="验证器二维码">
+		<p class="p-text">密钥（手动输入用）：<code>{{ secret }}</code></p>
+
+		<form action="" method="post">
+			{% csrf_token %}
+			<input type="hidden" name="action" value="confirm">
+			6 位验证码:
+			<input type="text" name="token" required autocomplete="one-time-code" inputmode="numeric">
+			<input type="submit" value="确认启用">
+		</form>
+
+		<form action="" method="post">
+			{% csrf_token %}
+			<input type="hidden" name="action" value="cancel">
+			<input type="submit" value="取消">
+		</form>
+
+	{% elif setup_step == 'enabled' %}
+		<p class="p-text">两步验证已启用。</p>
+
+		{% if recovery_codes %}
+			<p class="p-text">请立即保存以下恢复代码（<strong>仅显示这一次</strong>），每个只能用一次：</p>
+			<ul>
+				{% for code in recovery_codes %}
+					<li class="li-text">{{ code }}</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+
+		<form action="" method="post">
+			{% csrf_token %}
+			<input type="hidden" name="action" value="regenerate">
+			<input type="submit" value="重新生成恢复代码" onclick="return confirm('重新生成后，旧恢复代码将全部失效。确定继续？')">
+		</form>
+
+		<form action="" method="post">
+			{% csrf_token %}
+			<input type="hidden" name="action" value="disable">
+			<input type="submit" value="禁用两步验证" onclick="return confirm('确定禁用两步验证吗？')">
+		</form>
+	{% endif %}
+
+	<p class="p-text"><a class="a-text" href="{% url 'users:settings' %}">返回设置</a></p>
+{% endblock %}

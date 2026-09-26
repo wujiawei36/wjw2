@@ -1,0 +1,25 @@
+{% extends 'index/base.html' %}
+
+{% block head %}
+<title>两步验证 - {{ site_name }}</title>
+{% endblock %}
+
+{% block content %}
+	<h1 class="h1-text">两步验证</h1>
+
+	<p class="p-text">请输入验证器（如 Google Authenticator）中的 6 位动态验证码，或使用一个恢复代码。</p>
+
+	<form action="" method="post">
+		{% csrf_token %}
+		验证码:
+		<input type="text" name="token" required autocomplete="one-time-code" inputmode="numeric">
+		<br>
+		<input type="submit" value="验证">
+	</form>
+
+	{% if errors %}
+		<p class="p-text">错误：{{ errors }}</p>
+	{% endif %}
+
+	<p class="p-text"><a class="a-text" href="{% url 'users:login' %}">返回登录</a></p>
+{% endblock %}

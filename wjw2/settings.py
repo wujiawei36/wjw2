@@ -61,6 +61,9 @@ INSTALLED_APPS = [
     'hijack',  # 核心功能
     'hijack.contrib.admin',  # (可选) 在Admin中集成劫持按钮[reference:12]
     'axes',  # 登录防爆破（登录失败锁定）
+    'django_otp',  # 两步验证（TOTP）底层库
+    'django_otp.plugins.otp_totp',  # TOTP 动态验证码设备
+    'django_otp.plugins.otp_static',  # 静态恢复代码设备
 ]
 
 MIDDLEWARE = [
@@ -72,6 +75,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',  # 为 user 提供 otp_device / is_verified()（两步验证）
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'users.middleware.SessionInfoMiddleware',
@@ -223,6 +227,15 @@ CAPTCHA_FOREGROUND_COLOR = '#000000'
 SITE_NAME = 'wujiawei的网站'
 
 LOGIN_URL='/user/login'
+
+# 两步验证（TOTP）签发者，出现在验证器 App 里显示的账号名中
+OTP_TOTP_ISSUER = 'wujiawei的网站'
+
+# 关闭 django-otp 设备级指数退避（默认 factor=1 会在连续输错后引入 1/2/4/8... 秒延迟，
+# 且状态持久跨会话，体验割裂）。改为在登录视图里用「每会话限 5 次」统一限次，
+# 会话清空即重置，行为更可预期；TOTP 的 last_t 防重放仍有效。
+OTP_TOTP_THROTTLE_FACTOR = 0
+OTP_STATIC_THROTTLE_FACTOR = 0
 
 STATIC_ROOT=os.path.join(BASE_DIR,'staticfiles')
 
