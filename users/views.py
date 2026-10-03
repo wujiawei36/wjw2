@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.sessions.models import Session
 from django.conf import settings
 from django.core.exceptions import ValidationError
+from django.http import HttpResponseForbidden
 from django.db import transaction
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
@@ -16,6 +17,7 @@ from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 from utils.get_ip import get_ip
 from .models import InviteCode, Notification, UserGroup
+from functools import wraps
 import base64
 import io
 import logging
@@ -25,6 +27,25 @@ from base64 import b32encode
 logger = logging.getLogger(__name__)
 
 User = get_user_model()
+
+# —— 演示账号（guest）限制 ——
+# 演示账号供他人体验，禁止使用账户管理类功能（改密码/2FA/会话管理/登录历史），
+# 防止访客改动演示账号的凭据或安全设置、导致后续体验者无法正常登录使用。
+DEMO_ACCOUNT_USERNAMES = {'guest'}
+
+
+def _is_demo_account(user):
+    return getattr(user, 'username', None) in DEMO_ACCOUNT_USERNAMES
+
+
+def demo_account_forbidden(view_func):
+    """拒绝演示账号访问：配合 @login_required 使用，置于其下方（先登录校验）。"""
+    @wraps(view_func)
+    def _wrapped(request, *args, **kwargs):
+        if request.user.is_authenticated and _is_demo_account(request.user):
+            return HttpResponseForbidden('演示账号不支持此操作')
+        return view_func(request, *args, **kwargs)
+    return _wrapped
 
 def get_captchas():
 	new_captcha_key = CaptchaStore.generate_key()
@@ -300,10 +321,11 @@ def user_profile(request, user_id):
 @login_required
 def user_settings(request):
 	"""用户设置列表页：当前仅提供「修改密码」入口，后续可扩展 2FA 等。"""
-	return render(request, 'users/settings.html')
+	return render(request, 'users/settings.html', {'is_demo': _is_demo_account(request.user)})
 
 
 @login_required
+@demo_account_forbidden
 def user_change_password(request):
 	"""修改密码：校验原密码 → 两次新密码一致 → 密码强度 → 更新并保持登录态。"""
 	if request.method == 'POST':
@@ -335,6 +357,7 @@ def user_change_password(request):
 
 
 @login_required
+@demo_account_forbidden
 def two_factor_setup(request):
 	"""两步验证管理页：启用（二维码 + 明文 secret + 输码确认）、重新生成恢复代码、禁用。
 
@@ -410,6 +433,7 @@ def two_factor_setup(request):
 
 
 @login_required
+@demo_account_forbidden
 def user_sessions(request):
 	"""会话管理：列出当前用户的所有活跃会话，支持踢出指定设备（删除对应 Session）。
 
@@ -462,6 +486,7 @@ def user_sessions(request):
 
 
 @login_required
+@demo_account_forbidden
 def login_history(request):
 	"""登录历史：展示本人最近 20 条成功登录记录（axes AccessLog）。
 

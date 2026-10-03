@@ -8,6 +8,9 @@
 	<h1 class="h1-text">设置</h1>
 
 	<h2 class="h2-text">账号与安全</h2>
+	{% if is_demo %}
+	<p class="p-text">演示账号不支持账户安全设置。</p>
+	{% else %}
 	<ul>
 		<li class="li-text">
 			<a class="a-text" href="{% url 'users:change_password' %}">修改密码</a>
@@ -22,4 +25,5 @@
 			<a class="a-text" href="{% url 'users:login_history' %}">登录历史</a>
 		</li>
 	</ul>
+	{% endif %}
 {% endblock %}
