@@ -250,3 +250,11 @@ def broadcast_notification(request):
         context['success'] = f'已向「{label}」发送通知，共 {len(targets)} 人'
 
     return render(request, 'panel/broadcast_notification.html', context)
+
+
+@login_required
+@staff_member_required
+def api_usage(request):
+    """API 用量列表：展示每个 Key 的调用次数/限频次数/配额等。"""
+    keys = ApiKey.objects.select_related('owner').order_by('-created_at')
+    return render(request, 'panel/api_usage.html', {'keys': keys})

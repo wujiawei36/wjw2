@@ -10,6 +10,7 @@ import uuid
 import qrcode
 from datetime import datetime, timezone as dt_timezone
 
+from django.db.models import F
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.templatetags.static import static
@@ -118,6 +119,9 @@ def tool_api(request, slug):
         for dim_key in dim_keys:
             ok, retry = rate_allow(dim_key, window, max_c)
             if not ok:
+                if api_key:
+                    ApiKey.objects.filter(pk=api_key.pk).update(
+                        rate_limited_count=F('rate_limited_count') + 1)
                 _audit(request, slug, api_key, 'RATE_LIMITED')
                 return JsonResponse(
                     {'ok': False, 'error': 'RATE_LIMITED'},

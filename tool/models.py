@@ -38,6 +38,7 @@ class ApiKey(models.Model):
     expires_at = models.DateTimeField(null=True, blank=True, help_text='过期时间（空=永不过期）')
     quota = models.PositiveIntegerField(null=True, blank=True, help_text='调用额度上限（空=不限）')
     used = models.PositiveIntegerField(default=0, help_text='已使用次数')
+    rate_limited_count = models.PositiveIntegerField(default=0, help_text='触发限频次数')
     rate_per_minute = models.PositiveIntegerField(
         null=True, blank=True,
         help_text='频率上限(次/分钟)：留空=跟随工具默认；0=不限频；正整数=覆盖工具默认',

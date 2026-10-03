@@ -54,6 +54,7 @@
 	{% endif %}
 	{% if perms.tool.view_apikey %}
 		<a class="a-text" href="/admin/tool/apikey">API Key</a> <span class="p-text">- 对外接口凭证/额度/频率</span><br>
+		<a class="a-text" href="api_usage">API 用量</a> <span class="p-text">- 各 Key 调用/限频/配额</span><br>
 	{% endif %}
 	{% if perms.axes.view_accessattempt %}
 		<a class="a-text" href="/admin/axes/accessattempt/">登录尝试</a> <span class="p-text">- 防爆破聚合(只读)</span><br>
