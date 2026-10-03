@@ -54,6 +54,7 @@ class UserGroup(models.Model):
 
     管理员可把任意用户归入若干分组，群发通知时选择目标分组。
     成员需手动维护，不与 can_develop 等字段自动同步。
+    is_default=True 的分组为「默认分组」：新注册用户会自动加入所有默认分组。
     """
     name = models.CharField('分组名', max_length=64, unique=True)
     members = models.ManyToManyField(
@@ -61,6 +62,11 @@ class UserGroup(models.Model):
         related_name='notification_groups',
         blank=True,
         verbose_name='成员',
+    )
+    is_default = models.BooleanField(
+        '默认分组',
+        default=False,
+        help_text='勾选后，新注册用户自动加入该分组',
     )
     created_at = models.DateTimeField('创建时间', default=timezone.now)
 

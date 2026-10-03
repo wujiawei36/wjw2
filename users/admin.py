@@ -59,7 +59,8 @@ class NotificationAdmin(admin.ModelAdmin):
 
 @admin.register(UserGroup)
 class UserGroupAdmin(admin.ModelAdmin):
-    list_display = ["name", "member_count", "created_at"]
+    list_display = ["name", "member_count", "is_default", "created_at"]
+    list_editable = ["is_default"]
     search_fields = ["name"]
     filter_horizontal = ["members"]
     readonly_fields = ["created_at"]

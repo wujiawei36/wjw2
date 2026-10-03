@@ -15,7 +15,7 @@ from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 from utils.get_ip import get_ip
-from .models import InviteCode, Notification
+from .models import InviteCode, Notification, UserGroup
 import base64
 import io
 import logging
@@ -266,6 +266,11 @@ def auth_register(request):
 				code_obj.save(update_fields=['used_at', 'used_by'])
 		except InviteCode.DoesNotExist:
 			return render(request, 'registration/register.html', {**get_captchas(), 'errors': '邀请码无效'})
+
+		# 新注册用户自动加入所有「默认分组」
+		default_groups = UserGroup.objects.filter(is_default=True)
+		if default_groups.exists():
+			user.notification_groups.add(*default_groups)
 
 		logger.info('REGISTER_OK 新用户[%s](id=%s) 使用邀请码[%s] 来自IP[%s] 注册成功',
 		            user.username, user.id, invite_code, get_ip(request))
