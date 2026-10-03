@@ -803,7 +803,7 @@ class PasswordStrengthCoreTests(TestCase):
 
     def test_strong_password(self):
         from utils.password_strength import password_strength
-        r = password_strength('k9$XmQ2#vLp7@wT')
+        r = password_strength('K9$xMq2#vLp7@wTz5&Yr8')
         self.assertGreaterEqual(r['score'], 80)
         self.assertEqual(r['level'], 4)
         self.assertTrue(r['has_symbol'])
@@ -825,6 +825,30 @@ class PasswordStrengthCoreTests(TestCase):
         r1 = password_strength('myadminpassword')
         r2 = password_strength('myadminpassword', 'admin')
         self.assertLess(r2['score'], r1['score'])
+
+    def test_repeat_characters_weak(self):
+        from utils.password_strength import password_strength
+        # 20 个星号：熵极低，不应虚高
+        r = password_strength('*' * 20)
+        self.assertLess(r['score'], 20)
+
+    def test_leet_variant_weak(self):
+        from utils.password_strength import password_strength
+        # l33t 变体还原后命中常见弱密码
+        r = password_strength('P@ssw0rd')
+        self.assertTrue(r['is_common'])
+        self.assertEqual(r['level'], 0)
+
+    def test_url_not_strong(self):
+        from utils.password_strength import password_strength
+        # 公开网址不应被判为「很强」
+        r = password_strength('https://wujiawei36.pythonanywhere.com')
+        self.assertLess(r['score'], 60)
+
+    def test_keyboard_sequence_weak(self):
+        from utils.password_strength import password_strength
+        r = password_strength('qwertyuiop')
+        self.assertLess(r['score'], 20)
 
 
 class PasswordStrengthToolTests(TestCase):
@@ -856,7 +880,7 @@ class PasswordStrengthToolTests(TestCase):
         self.assertTrue(data['is_common'])
 
     def test_api_strong_password(self):
-        resp = self._post({'input': 'k9$XmQ2#vLp7@wT'})
+        resp = self._post({'input': 'K9$xMq2#vLp7@wTz5&Yr8'})
         self.assertEqual(resp.status_code, 200)
         data = resp.json()['data']
         self.assertGreaterEqual(data['score'], 80)
