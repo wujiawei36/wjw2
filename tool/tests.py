@@ -75,12 +75,12 @@ class ToolPagesTests(TestCase):
         # 三标签徽章：浏览器处理 / 服务器处理 / 支持API
         body = self.client.get('/tools/').content.decode()
         # 说明文字各含 1 次 + 徽章次数：
-        #   浏览器处理：说明1 + 18 个前端工具(17 个普通前端 + 大屏时钟)
+        #   浏览器处理：说明1 + 19 个前端工具(18 个普通前端 + 大屏时钟)
         #   服务器处理：说明1 + 4 个后端工具(servertime/ipinfo/qrcode/diff)
-        #   支持API：说明1 + 21 个支持 API 的工具(除大屏时钟外)
-        self.assertEqual(body.count('浏览器处理'), 19)
+        #   支持API：说明1 + 22 个支持 API 的工具(除大屏时钟外)
+        self.assertEqual(body.count('浏览器处理'), 20)
         self.assertEqual(body.count('服务器处理'), 5)
-        self.assertEqual(body.count('支持API'), 22)
+        self.assertEqual(body.count('支持API'), 23)
 
     def test_frontend_tools_detail_load_js(self):
         for slug in ['sha', 'color', 'number', 'regex', 'text']:
@@ -782,3 +782,87 @@ class ApiRequestCounterTests(TestCase):
         c.refresh_from_db()
         self.assertEqual(c.today_count, 1)
         self.assertEqual(c.total_count, 4)
+
+
+class PasswordStrengthCoreTests(TestCase):
+    """utils.password_strength 核心打分逻辑（与前端 JS 规则一致）"""
+
+    def test_common_password_zero(self):
+        from utils.password_strength import password_strength
+        r = password_strength('password')
+        self.assertEqual(r['score'], 0)
+        self.assertEqual(r['level'], 0)
+        self.assertTrue(r['is_common'])
+
+    def test_empty_zero(self):
+        from utils.password_strength import password_strength
+        r = password_strength('')
+        self.assertEqual(r['score'], 0)
+        self.assertEqual(r['level'], 0)
+        self.assertFalse(r['is_common'])
+
+    def test_strong_password(self):
+        from utils.password_strength import password_strength
+        r = password_strength('k9$XmQ2#vLp7@wT')
+        self.assertGreaterEqual(r['score'], 80)
+        self.assertEqual(r['level'], 4)
+        self.assertTrue(r['has_symbol'])
+
+    def test_sequence_penalty(self):
+        from utils.password_strength import password_strength
+        # 纯小写递增序列，应判为很弱
+        r = password_strength('abcdefgh')
+        self.assertLess(r['score'], 20)
+
+    def test_repeat_penalty(self):
+        from utils.password_strength import password_strength
+        # 大量重复字符应显著扣分
+        r = password_strength('abaaabbbccc')
+        self.assertLess(r['score'], 40)
+
+    def test_username_similarity_reduces_score(self):
+        from utils.password_strength import password_strength
+        r1 = password_strength('myadminpassword')
+        r2 = password_strength('myadminpassword', 'admin')
+        self.assertLess(r2['score'], r1['score'])
+
+
+class PasswordStrengthToolTests(TestCase):
+    """密码强度工具：详情页加载 JS + API 分支"""
+
+    def setUp(self):
+        from .ratelimit import reset
+        reset()
+        self.full_key, self.key_hash = generate_api_key()
+        ApiKey.objects.create(name='pw_test', key_hash=self.key_hash)
+
+    def _post(self, payload):
+        return self.client.post('/tools/api/password-strength/',
+                                data=json.dumps(payload),
+                                content_type='application/json',
+                                HTTP_X_API_KEY=self.full_key)
+
+    def test_detail_loads_js(self):
+        resp = self.client.get('/tools/password-strength/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn('tool/js/password-strength.js', resp.content.decode())
+
+    def test_api_common_password(self):
+        resp = self._post({'input': 'password'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertEqual(data['score'], 0)
+        self.assertEqual(data['level'], 0)
+        self.assertTrue(data['is_common'])
+
+    def test_api_strong_password(self):
+        resp = self._post({'input': 'k9$XmQ2#vLp7@wT'})
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()['data']
+        self.assertGreaterEqual(data['score'], 80)
+        self.assertGreaterEqual(data['level'], 4)
+
+    def test_api_username_reduces_score(self):
+        resp1 = self._post({'input': 'myadminpassword'})
+        resp2 = self._post({'input': 'myadminpassword', 'username': 'admin'})
+        self.assertLess(resp2.json()['data']['score'], resp1.json()['data']['score'])

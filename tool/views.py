@@ -22,6 +22,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from utils.get_ip import get_ip
+from utils.password_strength import password_strength
 from .models import ApiKey, hash_api_key, bump_api_counter
 from .ratelimit import allow as rate_allow
 from .registry import TOOLS, get_tool, format_rate_limit
@@ -433,6 +434,9 @@ def tool_api(request, slug):
             text.splitlines(), compare.splitlines(),
             fromfile='原文', tofile='对比', lineterm=''))
         data = {'diff': diff_text}
+    elif slug == 'password-strength':
+        username = str(body.get('username', ''))[:150]
+        data = password_strength(text, username)
     else:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 

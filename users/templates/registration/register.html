@@ -1,4 +1,5 @@
 {% extends 'index/base.html' %}
+{% load static %}
 
 {% block head %}
 <title>注册 - {{ site_name }}</title>
@@ -19,6 +20,7 @@
         <br>
         密码:
         <input type="password" name="password" required>
+        <div id="pw-strength"></div>
         <br>
         再次输入密码: 
         <input type="password" name="password_check" required>
@@ -56,4 +58,19 @@
             错误:{{ errors }}
         </p>
     {% endif %}
+
+    <script src="{% static 'tool/js/password-strength.js' %}"></script>
+    <script>
+        (function () {
+            var pw = document.forms['register_form']['password'];
+            var user = document.forms['register_form']['username'];
+            var box = document.getElementById('pw-strength');
+            function update() {
+                renderStrengthBar(box, passwordStrengthScore(pw.value, user.value));
+            }
+            pw.addEventListener('input', update);
+            pw.addEventListener('blur', update);
+            update();
+        })();
+    </script>
 {% endblock %}

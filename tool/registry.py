@@ -310,6 +310,26 @@ TOOLS = [
     "diff": "--- a\\n+++ b\\n@@ -1,3 +1,3 @@\\n a\\n-b\\n+x\\n c"
   }
 }'''},
+    {'slug': 'password-strength', 'title': '密码强度', 'desc': '检测密码强度（5 档评级）', 'kind': 'frontend',
+     'intro': '评估密码强度：结合长度、字符集多样性（大小写/数字/符号）、连续与重复序列、常见弱密码黑名单，以及可选的用户名相似度，给出 0~100 分与五档评级。仅作提示，不替代站点真正的密码策略校验。',
+     'usage': ['输入要检测的密码', '可选输入用户名，检测密码是否包含用户名', '强度条与评分实时显示'],
+     'related': ['password'],
+     'rate_limit': {'window': 60, 'max': 30},
+     'api_example': '{"input":"password","username":"admin"}',
+     'api_response': '''{
+  "ok": true,
+  "data": {
+    "score": 0,
+    "level": 0,
+    "label": "很弱",
+    "length": 8,
+    "has_lower": true,
+    "has_upper": false,
+    "has_digit": false,
+    "has_symbol": false,
+    "is_common": true
+  }
+}'''},
 ]
 
 
