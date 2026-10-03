@@ -1,4 +1,10 @@
 {% extends 'index/base.html' %}
+{% load static %}
+
+{% block head %}
+	<link rel="stylesheet" href="{% static 'tool/css/tool.css' %}">
+	<title>{{ site_name }}</title>
+{% endblock %}
 
 {% block content %}
 	<h1 class="h1-text">
@@ -11,6 +17,28 @@
 		</p>
 		<p class="p-text">
 			前往<a class="a-text" href="/tools/">工具站</a>，使用 JSON 格式化、时间戳转换、哈希计算、随机密码、正则测试等常用工具；除大屏时钟外均支持 API 脚本调用（需 API Key，请联系管理员申请）。
+		</p>
+	</div>
+
+	<div>
+		<h2 class="h2-text">常用工具</h2>
+		<div class="tool-grid">
+			{% for t in tools %}
+			<div class="tool-card">
+				<a class="tool-card-title" href="/tools/{{ t.slug }}/">{{ t.title }}</a>
+				<div class="tool-card-desc">{{ t.desc }}</div>
+			</div>
+			{% endfor %}
+		</div>
+		<p class="p-text">
+			查看<a class="a-text" href="/tools/">全部工具</a>
+		</p>
+	</div>
+
+	<div>
+		<h2 class="h2-text">访问统计</h2>
+		<p class="p-text">
+			今日访问：{{ visit_today }} · 累计访问：{{ visit_total }}
 		</p>
 	</div>
 

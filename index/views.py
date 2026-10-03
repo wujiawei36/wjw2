@@ -1,9 +1,30 @@
 from django.http import HttpResponse
 from django.shortcuts import render
+from django.utils import timezone
+from tool.registry import TOOLS
+from users.models import PageVisit
+
+FEATURED_TOOL_SLUGS = ['json', 'timestamp', 'base64', 'uuid', 'password', 'qrcode', 'sha', 'number']
+
+
+def _page_visit_stats():
+    """返回 (today, total)：今日访问需校验统计日期是否为今天（跨天未访问时旧值作废）。"""
+    visit = PageVisit.objects.filter(pk=1).first()
+    if visit is None:
+        return 0, 0
+    today = visit.today_count if visit.date == timezone.localdate() else 0
+    return today, visit.total_count
+
 
 # views
 def index(request):
-    return render(request,'index/index.html')
+    tools = [t for t in TOOLS if t['slug'] in FEATURED_TOOL_SLUGS]
+    visit_today, visit_total = _page_visit_stats()
+    return render(request, 'index/index.html', {
+        'tools': tools,
+        'visit_today': visit_today,
+        'visit_total': visit_total,
+    })
 
 def robots(request):
     """robots.txt：禁止搜索引擎收录后台/私有页面，公开页面正常放行。
