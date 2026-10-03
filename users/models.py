@@ -38,12 +38,39 @@ class Notification(models.Model):
         related_name='my_notification'
     )
     content = models.TextField('通知内容', blank = False)
+    is_read = models.BooleanField('已读', default=False)
+    created_at = models.DateTimeField('创建时间', default=timezone.now)
 
     def __str__(self):
         return f'对用户 id={self.target_user.id} 的通知'
     class Meta:
         verbose_name = "用户通知"
         verbose_name_plural = verbose_name
+        ordering = ['-created_at']
+
+
+class UserGroup(models.Model):
+    """通知群发的自定义用户分组（与 auth.Group 权限组解耦）。
+
+    管理员可把任意用户归入若干分组，群发通知时选择目标分组。
+    成员需手动维护，不与 can_develop 等字段自动同步。
+    """
+    name = models.CharField('分组名', max_length=64, unique=True)
+    members = models.ManyToManyField(
+        CustomUser,
+        related_name='notification_groups',
+        blank=True,
+        verbose_name='成员',
+    )
+    created_at = models.DateTimeField('创建时间', default=timezone.now)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = '用户分组'
+        verbose_name_plural = '用户分组'
+        ordering = ['-created_at']
 
 class Ban_IP(models.Model):
     ip = models.GenericIPAddressField('IP 地址:', blank = False, primary_key = True)

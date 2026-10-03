@@ -1,0 +1,34 @@
+{% extends 'index/base.html' %}
+
+{% block head %}
+<title>通知 - {{ site_name }}</title>
+{% endblock %}
+
+{% block content %}
+	<h1 class="h1-text">通知</h1>
+
+	{% if notifications %}
+		<ul>
+			{% for n in notifications %}
+				<li class="li-text">
+					{% if not n.is_read %}<strong>{% endif %}
+					{{ n.content }}
+					{% if not n.is_read %}</strong>{% endif %}
+					<br>
+					<span class="h6-text">{{ n.created_at|date:"Y-m-d H:i" }}
+					{% if n.is_read %} · 已读{% else %} · 未读{% endif %}</span>
+					{% if not n.is_read %}
+						<form method="post" action="{% url 'users:notification_mark_read' n.id %}" style="display:inline">
+							{% csrf_token %}
+							<input type="submit" value="标记已读">
+						</form>
+					{% endif %}
+				</li>
+			{% endfor %}
+		</ul>
+	{% else %}
+		<p class="p-text">暂无通知。</p>
+	{% endif %}
+
+	<p class="p-text"><a class="a-text" href="{% url 'users:settings' %}">返回设置</a></p>
+{% endblock %}

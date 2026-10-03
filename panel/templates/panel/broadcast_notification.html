@@ -1,0 +1,57 @@
+{% extends 'panel/base.html' %}
+
+{% block head %}
+<title>群发通知 - 管理 - {{ site_name }}</title>
+{% endblock %}
+
+{% block content %}
+	<h1 class="h1-text">群发通知</h1>
+
+	{% if success %}
+		<p class="p-text" style="color: green">{{ success }}</p>
+	{% endif %}
+	{% if error %}
+		<p class="p-text" style="color: red">{{ error }}</p>
+	{% endif %}
+
+	<form method="POST">
+		{% csrf_token %}
+		<p class="p-text">目标类型：</p>
+		<select name="target_type">
+			<option value="all">全员</option>
+			<option value="staff">所有管理员(Staff)</option>
+			<option value="developers">开发者(can_develop)</option>
+			<option value="regular">普通用户</option>
+			<option value="group">指定分组</option>
+			<option value="single">指定单人</option>
+		</select>
+		<br>
+
+		<p class="p-text">指定分组（选「指定分组」时生效）：</p>
+		<select name="group_id">
+			<option value="">— 请选择 —</option>
+			{% for g in groups %}
+			<option value="{{ g.id }}">{{ g.name }}（{{ g.members.count }} 人）</option>
+			{% endfor %}
+		</select>
+		<br>
+
+		<p class="p-text">指定单人（选「指定单人」时生效）：</p>
+		<select name="user_id">
+			<option value="">— 请选择 —</option>
+			{% for u in users %}
+			<option value="{{ u.id }}">{{ u.username }}（id={{ u.id }}）</option>
+			{% endfor %}
+		</select>
+		<br>
+
+		<p class="p-text">通知内容：</p>
+		<textarea name="content" rows="5" cols="60" required></textarea>
+		<br>
+
+		<input type="checkbox" id="confirm" name="confirm" required>
+		<label for="confirm">我确认向所选目标发送该通知</label>
+		<br>
+		<input type="submit" value="发送">
+	</form>
+{% endblock %}

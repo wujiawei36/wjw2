@@ -196,6 +196,7 @@
 					<li><a href="/panel">管理页面</a></li>
 				{% endif %}
 				{% if user.is_authenticated %}
+					<li><a href="/user/notifications/">通知{% if unread_notifications %}({{ unread_notifications }}){% endif %}</a></li>
 					<li class="right"><a href="/user/logout">登出</a></li>
 					<li>
 						<a href="/user/{{ user.id }}" class="username">

@@ -11,7 +11,7 @@ from django.db.models.functions import TruncHour
 from django.conf import settings
 from datetime import timedelta
 from axes.models import AccessFailureLog, AccessLog, AccessAttempt
-from users.models import InviteCode, Ban_IP, PageVisit, create_invite_code
+from users.models import InviteCode, Ban_IP, PageVisit, Notification, UserGroup, create_invite_code
 from tool.models import ApiKey, generate_api_key, ApiRequestCounter
 from io import StringIO
 import sys
@@ -187,3 +187,66 @@ def dashboard(request):
         'stats': stats, 'trend': trend, 'max_count': max_count,
         'security': security, 'events': events,
     })
+
+
+@login_required
+@staff_member_required
+def broadcast_notification(request):
+    """群发通知：目标可为全员/Staff/开发者/普通用户/指定分组/指定单人。"""
+    groups = UserGroup.objects.all()
+    users = User.objects.order_by('id')
+    context = {'groups': groups, 'users': users}
+
+    if request.method == 'POST':
+        target_type = request.POST.get('target_type', '')
+        content = request.POST.get('content', '').strip()
+        if not content:
+            context['error'] = '通知内容不能为空'
+            return render(request, 'panel/broadcast_notification.html', context)
+
+        targets = []
+        label = ''
+        if target_type == 'all':
+            targets = list(User.objects.all())
+            label = '全员'
+        elif target_type == 'staff':
+            targets = list(User.objects.filter(is_staff=True))
+            label = '所有管理员(Staff)'
+        elif target_type == 'developers':
+            targets = list(User.objects.filter(can_develop=True))
+            label = '开发者(can_develop)'
+        elif target_type == 'regular':
+            targets = list(User.objects.filter(is_staff=False))
+            label = '普通用户'
+        elif target_type == 'group':
+            gid = request.POST.get('group_id', '').strip()
+            group = UserGroup.objects.filter(pk=int(gid)).first() if gid.isdigit() else None
+            if group is None:
+                context['error'] = '请选择有效分组'
+                return render(request, 'panel/broadcast_notification.html', context)
+            targets = list(group.members.all())
+            label = f'分组[{group.name}]'
+        elif target_type == 'single':
+            uid = request.POST.get('user_id', '').strip()
+            u = User.objects.filter(pk=int(uid)).first() if uid.isdigit() else None
+            if u is None:
+                context['error'] = '请选择有效用户'
+                return render(request, 'panel/broadcast_notification.html', context)
+            targets = [u]
+            label = f'用户[{u.username}]'
+        else:
+            context['error'] = '未知目标类型'
+            return render(request, 'panel/broadcast_notification.html', context)
+
+        if not targets:
+            context['error'] = '目标用户集合为空，未发送'
+            return render(request, 'panel/broadcast_notification.html', context)
+
+        Notification.objects.bulk_create([
+            Notification(target_user=u, content=content) for u in targets
+        ])
+        logger.info('BROADCAST_NOTIFICATION 用户[%s](id=%s) 向%s发送通知，共%d人',
+                    request.user.username, request.user.id, label, len(targets))
+        context['success'] = f'已向「{label}」发送通知，共 {len(targets)} 人'
+
+    return render(request, 'panel/broadcast_notification.html', context)

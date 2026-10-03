@@ -1,5 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
-from .models import CustomUser, Notification, Ban_IP, InviteCode, generate_invite_code, create_invite_code
+from .models import CustomUser, Notification, UserGroup, Ban_IP, InviteCode, generate_invite_code, create_invite_code
 from django.contrib.sessions.models import Session
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth.admin import UserAdmin
@@ -46,8 +46,27 @@ class CustomUserAdmin(HijackUserAdminMixin, UserAdmin):
 
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
-    list_display = ["id", "target_user"]
-    ordering = ["id"]
+    list_display = ["id", "target_user", "content_preview", "is_read", "created_at"]
+    list_filter = ["is_read", "created_at"]
+    search_fields = ["target_user__username", "content"]
+    ordering = ["-created_at"]
+    readonly_fields = ["created_at"]
+
+    @admin.display(description="内容")
+    def content_preview(self, obj):
+        return obj.content[:40] + ('…' if len(obj.content) > 40 else '')
+
+
+@admin.register(UserGroup)
+class UserGroupAdmin(admin.ModelAdmin):
+    list_display = ["name", "member_count", "created_at"]
+    search_fields = ["name"]
+    filter_horizontal = ["members"]
+    readonly_fields = ["created_at"]
+
+    @admin.display(description="成员数")
+    def member_count(self, obj):
+        return obj.members.count()
 
 @admin.register(LogEntry)
 class LogEntryAdmin(admin.ModelAdmin):

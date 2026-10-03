@@ -20,13 +20,17 @@
 		{% endif %}
 	{% endif %}
 
-	{% if perms.users.view_user or perms.users.view_notification or perms.users.view_ban_ip %}
+	{% if perms.users.view_user or perms.users.view_notification or perms.users.view_ban_ip or perms.users.view_usergroup %}
 	<h2>用户管理</h2>
 	{% if perms.users.view_user %}
 		<a class="a-text" href="/admin/users/customuser">用户</a> <span class="p-text">- 账号/权限/劫持</span><br>
 	{% endif %}
 	{% if perms.users.view_notification %}
 		<a class="a-text" href="/admin/users/notification">用户通知</a> <span class="p-text">- 通知内容</span><br>
+		<a class="a-text" href="broadcast_notification">群发通知</a> <span class="p-text">- 全员/分组/条件群发</span><br>
+	{% endif %}
+	{% if perms.users.view_usergroup %}
+		<a class="a-text" href="/admin/users/usergroup">用户分组</a> <span class="p-text">- 通知群发目标分组</span><br>
 	{% endif %}
 	{% if perms.users.view_ban_ip %}
 		<a class="a-text" href="/admin/users/ban_ip">封禁IP</a> <span class="p-text">- 手动封禁/自动封禁记录</span><br>

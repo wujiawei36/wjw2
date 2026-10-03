@@ -15,7 +15,7 @@ from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
 from captcha.helpers import captcha_image_url
 from captcha.models import CaptchaStore
 from utils.get_ip import get_ip
-from .models import InviteCode
+from .models import InviteCode, Notification
 import base64
 import io
 import logging
@@ -474,3 +474,20 @@ def login_history(request):
 		for r in records
 	]
 	return render(request, 'users/login_history.html', {'history': history})
+
+
+@login_required
+def notification_list(request):
+	"""通知列表：未读在前，按创建时间倒序。"""
+	notifications = Notification.objects.filter(target_user=request.user).order_by('is_read', '-created_at')
+	return render(request, 'users/notifications.html', {'notifications': notifications})
+
+
+@login_required
+def notification_mark_read(request, notification_id):
+	"""标记单条通知已读（仅本人，POST + 归属校验）。"""
+	note = get_object_or_404(Notification, id=notification_id, target_user=request.user)
+	if request.method == 'POST':
+		note.is_read = True
+		note.save(update_fields=['is_read'])
+	return redirect('users:notification_list')
