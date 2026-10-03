@@ -9,4 +9,5 @@ urlpatterns = [
     path('api_keys/', views.api_keys, name='api_keys'),
     path('broadcast_notification/', views.broadcast_notification, name='broadcast_notification'),
     path('api_usage/', views.api_usage, name='api_usage'),
+    path('visit_trend/', views.visit_trend, name='visit_trend'),
 ]

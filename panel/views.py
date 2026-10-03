@@ -11,7 +11,7 @@ from django.db.models.functions import TruncHour
 from django.conf import settings
 from datetime import timedelta
 from axes.models import AccessFailureLog, AccessLog, AccessAttempt
-from users.models import InviteCode, Ban_IP, PageVisit, Notification, UserGroup, create_invite_code
+from users.models import InviteCode, Ban_IP, PageVisit, DailyVisit, Notification, UserGroup, create_invite_code
 from tool.models import ApiKey, generate_api_key, ApiRequestCounter
 from io import StringIO
 import sys
@@ -258,3 +258,21 @@ def api_usage(request):
     """API 用量列表：展示每个 Key 的调用次数/限频次数/配额等。"""
     keys = ApiKey.objects.select_related('owner').order_by('-created_at')
     return render(request, 'panel/api_usage.html', {'keys': keys})
+
+
+@login_required
+@staff_member_required
+def visit_trend(request):
+    """访问趋势：最近 30 天每日页面访问量柱状图（DailyVisit 快照）。"""
+    days = 30
+    today = timezone.localdate()
+    start = today - timedelta(days=days - 1)
+    data = dict(DailyVisit.objects.filter(date__gte=start).values_list('date', 'count'))
+    trend = []
+    for i in range(days):
+        d = start + timedelta(days=i)
+        trend.append({'label': f'{d.month}/{d.day}', 'count': data.get(d, 0)})
+    max_count = max([x['count'] for x in trend] or [1]) or 1
+    return render(request, 'panel/visit_trend.html', {
+        'trend': trend, 'max_count': max_count, 'days': days,
+    })

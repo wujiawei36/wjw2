@@ -1,10 +1,13 @@
 import base64
+import difflib
 import hashlib
+import html
 import io
 import json
 import logging
 import re
 import secrets
+import urllib.parse
 import uuid
 
 import qrcode
@@ -386,6 +389,50 @@ def tool_api(request, slug):
 
         f = _smallest_factor(n)
         data = {'n': n, 'is_prime': f == n, 'factor': None if f == n else f}
+    elif slug == 'url':
+        mode = str(body.get('mode', 'encode')).lower()
+        if mode == 'encode':
+            # safe 与前端 encodeURIComponent 保持一致（不编码 !~*'()）
+            data = {'text': urllib.parse.quote(text, safe="!~*'()")}
+        elif mode == 'decode':
+            data = {'text': urllib.parse.unquote(text)}
+        else:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'mode must be "encode" or "decode"'}, status=400)
+    elif slug == 'html':
+        mode = str(body.get('mode', 'escape')).lower()
+        if mode == 'escape':
+            data = {'text': (text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                             .replace('"', '&quot;').replace("'", '&#39;'))}
+        elif mode == 'unescape':
+            data = {'text': html.unescape(text)}
+        else:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'mode must be "escape" or "unescape"'}, status=400)
+    elif slug == 'unicode':
+        mode = str(body.get('mode', 'encode')).lower()
+        if mode == 'encode':
+            out = []
+            for ch in text:
+                o = ord(ch)
+                if o > 0x7f:
+                    out.append('\\u%04x' % o if o <= 0xffff else '\\U%08x' % o)
+                else:
+                    out.append(ch)
+            data = {'text': ''.join(out)}
+        elif mode == 'decode':
+            s = re.sub(r'\\U([0-9a-fA-F]{8})', lambda m: chr(int(m.group(1), 16)), text)
+            s = re.sub(r'\\u([0-9a-fA-F]{4})', lambda m: chr(int(m.group(1), 16)), s)
+            data = {'text': s}
+        else:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'mode must be "encode" or "decode"'}, status=400)
+    elif slug == 'diff':
+        compare = str(body.get('compare', ''))[:10000]
+        diff_text = '\n'.join(difflib.unified_diff(
+            text.splitlines(), compare.splitlines(),
+            fromfile='原文', tofile='对比', lineterm=''))
+        data = {'diff': diff_text}
     else:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 

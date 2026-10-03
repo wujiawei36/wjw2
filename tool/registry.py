@@ -260,6 +260,56 @@ TOOLS = [
     "factor": null
   }
 }'''},
+    {'slug': 'url', 'title': 'URL 编解码', 'desc': 'URL 编码 / 解码', 'kind': 'frontend',
+     'intro': 'URL（百分号）编码与解码，完整支持 UTF-8 中文。',
+     'usage': ['在「编码」区输入文本得到 URL 编码', '在「解码」区输入 URL 编码还原文本'],
+     'related': ['base64', 'text'],
+     'rate_limit': {'window': 60, 'max': 30},
+     'api_example': '{"input":"你好 world","mode":"encode"}',
+     'api_response': '''{
+  "ok": true,
+  "data": {
+    "text": "%E4%BD%A0%E5%A5%BD%20world"
+  }
+}'''},
+    {'slug': 'html', 'title': 'HTML 实体', 'desc': 'HTML 实体转义 / 反转义', 'kind': 'frontend',
+     'intro': 'HTML 实体（如 &amp; &lt; &gt; &quot;）转义与反转义。',
+     'usage': ['在「转义」区输入文本得到 HTML 实体', '在「反转义」区输入实体还原文本'],
+     'related': ['text', 'base64'],
+     'rate_limit': {'window': 60, 'max': 30},
+     'api_example': '{"input":"<a>A & B</a>","mode":"escape"}',
+     'api_response': '''{
+  "ok": true,
+  "data": {
+    "text": "&lt;a&gt;A &amp; B&lt;/a&gt;"
+  }
+}'''},
+    {'slug': 'unicode', 'title': 'Unicode 编解码', 'desc': '中文 ↔ \\uXXXX 转义', 'kind': 'frontend',
+     'intro': '在文本与 Unicode 转义序列（\\uXXXX）之间互转，如「你好」↔「\\u4f60\\u597d」。',
+     'usage': ['在「转 Unicode」区输入文本得到 \\uXXXX', '在「转文本」区输入 \\uXXXX 还原文本'],
+     'related': ['text', 'base64'],
+     'rate_limit': {'window': 60, 'max': 30},
+     'api_example': '{"input":"你好","mode":"encode"}',
+     'api_response': '''{
+  "ok": true,
+  "data": {
+    "text": "\\u4f60\\u597d"
+  }
+}'''},
+    {'slug': 'diff', 'title': '文本对比', 'desc': '对比两段文本差异', 'kind': 'backend',
+     'tool_js': True,                        # backend 工具自定义前端渲染（双输入框，非单 textarea）
+     'allow_anonymous': True,                # 浏览器免 Key 对比（后端 difflib，按 IP 限频）
+     'rate_limit': {'window': 60, 'max': 10},
+     'intro': '对比两段文本的差异，生成 unified diff（+ 新增行 / - 删除行）。由服务器端 difflib 计算，浏览器免 Key、按 IP 限频；也支持脚本带 Key 批量调用。',
+     'usage': ['在「原文」输入第一段文本', '在「对比」输入第二段文本', '点击「对比」查看差异'],
+     'related': ['text', 'regex'],
+     'api_example': '{"input":"a\\nb\\nc","compare":"a\\nx\\nc"}',
+     'api_response': '''{
+  "ok": true,
+  "data": {
+    "diff": "--- a\\n+++ b\\n@@ -1,3 +1,3 @@\\n a\\n-b\\n+x\\n c"
+  }
+}'''},
 ]
 
 

@@ -118,6 +118,24 @@ class PageVisit(models.Model):
         return f'{self.date} 今日 {self.today_count} / 累计 {self.total_count}'
 
 
+class DailyVisit(models.Model):
+    """每日访问快照：由 bump_page_visit() 跨天时落库，供访问趋势图使用。
+
+    每天一条（date 唯一），count 为当天页面访问总量。某天完全无访问则无记录，
+    画图时补 0。跨天那一刻才写一次（get_or_create 幂等），不随访问量膨胀。
+    """
+    date = models.DateField('日期', unique=True)
+    count = models.PositiveIntegerField('访问量', default=0)
+
+    class Meta:
+        verbose_name = '每日访问'
+        verbose_name_plural = '每日访问'
+        ordering = ['-date']
+
+    def __str__(self):
+        return f'{self.date} · {self.count}'
+
+
 def bump_page_visit():
     """每次普通页面访问计数 +1（今日与累计）。
 
@@ -131,7 +149,9 @@ def bump_page_visit():
     if created:
         return
     if obj.date != today:
-        # 跨天：仅当记录仍停在旧日期时才执行重置（并发下只放行第一个请求）
+        # 跨天：先把昨日访问量写入每日快照（幂等，供趋势图），再重置今日计数
+        DailyVisit.objects.get_or_create(date=obj.date, defaults={'count': obj.today_count})
+        # 仅当记录仍停在旧日期时才执行重置（并发下只放行第一个请求）
         PageVisit.objects.filter(pk=1, date=obj.date).update(
             date=today, today_count=1, total_count=F('total_count') + 1)
     else:

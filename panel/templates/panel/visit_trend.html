@@ -1,0 +1,40 @@
+{% extends 'panel/base.html' %}
+
+{% block head %}
+<title>访问趋势 - 管理 - {{ site_name }}</title>
+<style>
+    .vt { max-width: 760px; }
+    .vt-box { background: #fff; border: 0.5px solid #ddd; border-radius: 10px; padding: 14px 16px; }
+    .vt-t { font-size: 14px; font-weight: 500; margin-bottom: 10px; }
+    .vt-chart { display: flex; align-items: flex-end; gap: 2px; height: 160px; }
+    .vt-bar { flex: 1; background: #4a90e2; border-radius: 2px 2px 0 0; min-height: 2px; }
+    .vt-x { display: flex; gap: 2px; margin-top: 6px; font-size: 10px; color: #999; }
+    .vt-x span { flex: 1; text-align: center; }
+    .vt-summary { font-size: 13px; color: #666; margin-top: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="vt">
+    <h1 class="h1-text">访问趋势</h1>
+    <div class="vt-box">
+        <div class="vt-t">最近 {{ days }} 天页面访问量</div>
+        <div class="vt-chart">
+            {% for item in trend %}
+                <div class="vt-bar" title="{{ item.label }}：{{ item.count }} 次"
+                     style="height: {% widthratio item.count max_count 100 %}%"></div>
+            {% endfor %}
+        </div>
+        <div class="vt-x">
+            {% for item in trend %}
+                {% if forloop.first or forloop.last or forloop.counter|divisibleby:6 %}
+                    <span>{{ item.label }}</span>
+                {% else %}
+                    <span></span>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <div class="vt-summary">数据来源：每日访问快照（跨天自动记录），无记录的日期按 0 计。</div>
+    </div>
+</div>
+{% endblock %}

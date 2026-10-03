@@ -1,5 +1,5 @@
 from django.contrib.contenttypes.models import ContentType
-from .models import CustomUser, Notification, UserGroup, Ban_IP, InviteCode, generate_invite_code, create_invite_code
+from .models import CustomUser, Notification, UserGroup, Ban_IP, InviteCode, DailyVisit, generate_invite_code, create_invite_code
 from django.contrib.sessions.models import Session
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth.admin import UserAdmin
@@ -190,6 +190,17 @@ class Ban_IP_Admin(admin.ModelAdmin):
     ordering = ["updated_at"]  # 默认按时间升序
     list_filter = ["active", "updated_at"]
     search_fields = ["ip"]
+
+
+@admin.register(DailyVisit)
+class DailyVisitAdmin(admin.ModelAdmin):
+    # 只读：每日访问快照由中间件自动落库，不允许手工增删改
+    list_display = ["date", "count"]
+    ordering = ["-date"]
+    list_filter = ["date"]
+    def has_add_permission(self, request): return False
+    def has_change_permission(self, request, obj=None): return False
+    def has_delete_permission(self, request, obj=None): return False
 
 
 @admin.register(InviteCode)

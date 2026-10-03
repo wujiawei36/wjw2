@@ -2,6 +2,38 @@
 
 {% block head %}
 <title>设置 - {{ site_name }}</title>
+<style>
+	.setting-cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+		gap: 14px;
+		max-width: 720px;
+	}
+	.setting-card {
+		display: block;
+		border: 0.5px solid #ddd;
+		border-radius: 10px;
+		padding: 16px 18px;
+		background: #fff;
+		text-decoration: none;
+		transition: box-shadow .15s, border-color .15s;
+	}
+	.setting-card:hover {
+		border-color: #4a90e2;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+	}
+	.setting-card .card-title {
+		font-size: 18px;
+		color: #007bff;
+		margin: 0 0 6px;
+		font-weight: 400;
+	}
+	.setting-card .card-desc {
+		font-size: 13px;
+		color: #666;
+		margin: 0;
+	}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -11,19 +43,23 @@
 	{% if is_demo %}
 	<p class="p-text">演示账号不支持账户安全设置。</p>
 	{% else %}
-	<ul>
-		<li class="li-text">
-			<a class="a-text" href="{% url 'users:change_password' %}">修改密码</a>
-		</li>
-		<li class="li-text">
-			<a class="a-text" href="{% url 'users:two_factor_setup' %}">两步验证</a>
-		</li>
-		<li class="li-text">
-			<a class="a-text" href="{% url 'users:sessions' %}">会话管理</a>
-		</li>
-		<li class="li-text">
-			<a class="a-text" href="{% url 'users:login_history' %}">登录历史</a>
-		</li>
-	</ul>
+	<div class="setting-cards">
+		<a class="setting-card" href="{% url 'users:change_password' %}">
+			<div class="card-title">修改密码</div>
+			<div class="card-desc">更新登录密码</div>
+		</a>
+		<a class="setting-card" href="{% url 'users:two_factor_setup' %}">
+			<div class="card-title">两步验证</div>
+			<div class="card-desc">绑定验证器 / 恢复代码</div>
+		</a>
+		<a class="setting-card" href="{% url 'users:sessions' %}">
+			<div class="card-title">会话管理</div>
+			<div class="card-desc">查看并踢出登录设备</div>
+		</a>
+		<a class="setting-card" href="{% url 'users:login_history' %}">
+			<div class="card-title">登录历史</div>
+			<div class="card-desc">最近登录记录</div>
+		</a>
+	</div>
 	{% endif %}
 {% endblock %}
