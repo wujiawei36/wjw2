@@ -171,6 +171,23 @@
 			text-align: center;
 		}
 
+		.badge {
+			display: inline-block;
+			min-width: 18px;
+			height: 18px;
+			line-height: 18px;
+			padding: 0 5px;
+			border-radius: 9px;
+			background-color: #e74c3c;
+			color: #fff;
+			font-size: 12px;
+			font-weight: 700;
+			text-align: center;
+			margin-left: 4px;
+			vertical-align: middle;
+			box-sizing: border-box;
+		}
+
 		/*  */
 	</style>
 
@@ -196,7 +213,7 @@
 					<li><a href="/panel">管理页面</a></li>
 				{% endif %}
 				{% if user.is_authenticated %}
-					<li><a href="/user/notifications/">通知{% if unread_notifications %}({{ unread_notifications }}){% endif %}</a></li>
+					<li><a href="/user/notifications/">通知{% if unread_notifications %}<span class="badge">{% if unread_notifications > 99 %}99+{% else %}{{ unread_notifications }}{% endif %}</span>{% endif %}</a></li>
 					<li class="right"><a href="/user/logout">登出</a></li>
 					<li>
 						<a href="/user/{{ user.id }}" class="username">
