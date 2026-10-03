@@ -246,6 +246,20 @@ TOOLS = [
     "signature": "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
   }
 }'''},
+    {'slug': 'prime', 'title': '质数判断', 'desc': '判断一个数是否为质数', 'kind': 'frontend',
+     'intro': '判断一个整数是否为质数（素数）。采用试除法，输入上限 10^15（约 1 千万亿），避免大数导致浏览器或服务器卡顿；合数会给出一个因子。',
+     'usage': ['输入一个整数（2 ~ 10^15）', '点击「判断」', '结果显示是否为质数；合数会提示可被哪个数整除'],
+     'related': ['number'],
+     'rate_limit': {'window': 60, 'max': 30},
+     'api_example': '{"input":"97"}',
+     'api_response': '''{
+  "ok": true,
+  "data": {
+    "n": 97,
+    "is_prime": true,
+    "factor": null
+  }
+}'''},
 ]
 
 

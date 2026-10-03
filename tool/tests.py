@@ -75,12 +75,12 @@ class ToolPagesTests(TestCase):
         # 三标签徽章：浏览器处理 / 服务器处理 / 支持API
         body = self.client.get('/tools/').content.decode()
         # 说明文字各含 1 次 + 徽章次数：
-        #   浏览器处理：说明1 + 14 个前端工具(13 个普通前端 + 大屏时钟)
+        #   浏览器处理：说明1 + 15 个前端工具(14 个普通前端 + 大屏时钟)
         #   服务器处理：说明1 + 3 个后端工具(servertime/ipinfo/qrcode)
-        #   支持API：说明1 + 16 个支持 API 的工具(除大屏时钟外)
-        self.assertEqual(body.count('浏览器处理'), 15)
+        #   支持API：说明1 + 17 个支持 API 的工具(除大屏时钟外)
+        self.assertEqual(body.count('浏览器处理'), 16)
         self.assertEqual(body.count('服务器处理'), 4)
-        self.assertEqual(body.count('支持API'), 17)
+        self.assertEqual(body.count('支持API'), 18)
 
     def test_frontend_tools_detail_load_js(self):
         for slug in ['sha', 'color', 'number', 'regex', 'text']:

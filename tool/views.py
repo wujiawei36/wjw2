@@ -350,6 +350,38 @@ def tool_api(request, slug):
             'payload': json.dumps(payload, indent=2, ensure_ascii=False),
             'signature': parts[2],
         }
+    elif slug == 'prime':
+        s = text.strip()
+        if not re.fullmatch(r'\d+', s):
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'input must be a positive integer'}, status=400)
+        if len(s) > 16:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'number too large (max 10^15)'}, status=400)
+        n = int(s)
+        if n < 2:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'input must be >= 2'}, status=400)
+        if n > 10 ** 15:
+            return JsonResponse({'ok': False, 'error': 'BAD_PARAM',
+                                 'detail': 'number too large (max 10^15)'}, status=400)
+
+        def _smallest_factor(x):
+            if x % 2 == 0:
+                return 2
+            if x % 3 == 0:
+                return 3
+            i = 5
+            while i * i <= x:
+                if x % i == 0:
+                    return i
+                if x % (i + 2) == 0:
+                    return i + 2
+                i += 6
+            return x
+
+        f = _smallest_factor(n)
+        data = {'n': n, 'is_prime': f == n, 'factor': None if f == n else f}
     else:
         return JsonResponse({'ok': False, 'error': 'UNSUPPORTED_SLUG'}, status=404)
 
