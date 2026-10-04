@@ -221,7 +221,10 @@ def _interp(x, lo_b, hi_b, lo_s, hi_s) -> int:
 
 
 def _bits_to_score_level(bits: float):
-    """把熵(bits)映射为 (score 0~100, level 0~4)。沿用 zxcvbn 的熵阈值。"""
+    """把熵(bits)映射为 (score 0~99, level 0~4)。沿用 zxcvbn 的熵阈值。
+
+    分数上限封顶 99（而非 100）：刻意保留缺口，暗示「没有绝对安全的密码」。
+    """
     if bits < 28:
         return _interp(bits, 0, 28, 0, 19), 0
     if bits < 36:
@@ -230,7 +233,7 @@ def _bits_to_score_level(bits: float):
         return _interp(bits, 36, 60, 40, 59), 2
     if bits < 128:
         return _interp(bits, 60, 128, 60, 79), 3
-    return _interp(bits, 128, 256, 80, 100), 4
+    return _interp(bits, 128, 256, 80, 99), 4
 
 
 def password_strength(password: str, username: str | None = None) -> dict:

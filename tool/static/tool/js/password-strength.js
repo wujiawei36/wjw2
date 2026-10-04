@@ -180,11 +180,12 @@
   }
 
   function bitsToScoreLevel(bits) {
+    // 分数上限封顶 99（而非 100）：刻意保留缺口，暗示「没有绝对安全的密码」
     if (bits < 28) return [interp(bits, 0, 28, 0, 19), 0];
     if (bits < 36) return [interp(bits, 28, 36, 20, 39), 1];
     if (bits < 60) return [interp(bits, 36, 60, 40, 59), 2];
     if (bits < 128) return [interp(bits, 60, 128, 60, 79), 3];
-    return [interp(bits, 128, 256, 80, 100), 4];
+    return [interp(bits, 128, 256, 80, 99), 4];
   }
 
   function scorePassword(password, username) {
