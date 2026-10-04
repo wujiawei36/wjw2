@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.sessions.models import Session
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.db import transaction
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils import timezone
@@ -96,6 +96,7 @@ def auth_login(request):
 			return render(request, 'registration/login.html', get_captchas())
 
 		username = request.POST.get('username', '').strip()
+		raw_username = username  # 原始输入，登录失败时回填到表单
 		password = request.POST.get('password', '')
 		captcha_value = request.POST.get('captcha', '')
 		captcha_key = request.POST.get('captcha_key', '')
@@ -103,21 +104,21 @@ def auth_login(request):
 		# 验证码校验（先校验验证码，再进行任何用户查询，避免被用于探测）
 		ok, err = _verify_captcha(request, captcha_value, captcha_key)
 		if not ok:
-			return render(request, 'registration/login.html', {**get_captchas(), 'errors': err})
+			return render(request, 'registration/login.html', {**get_captchas(), 'errors': err, 'username': raw_username})
 
 		# 用户名或用户ID解析
 		username, err = _resolve_username(username)
 		if err:
-			return render(request, 'registration/login.html', {**get_captchas(), 'errors': err})
+			return render(request, 'registration/login.html', {**get_captchas(), 'errors': err, 'username': raw_username})
 
 		# 交由 Django 认证后端完成验证（含 axes 失败计数）
 		user = authenticate(request, username=username, password=password)
 		if user is None:
 			logger.warning('LOGIN_FAILED 用户名[%s] 来自IP[%s] 认证失败', username, get_ip(request))
-			return render(request, 'registration/login.html', {**get_captchas(), 'errors': '用户名或密码错误'})
+			return render(request, 'registration/login.html', {**get_captchas(), 'errors': '用户名或密码错误', 'username': raw_username})
 		if not user.is_active:
 			logger.warning('LOGIN_BLOCKED 用户[%s](id=%s) 账号已被禁用', user.username, user.id)
-			return render(request, 'registration/login.html', {**get_captchas(), 'errors': '账号已被禁用'})
+			return render(request, 'registration/login.html', {**get_captchas(), 'errors': '账号已被禁用', 'username': raw_username})
 
 		# 两步验证：密码通过后，若用户已启用 2FA，暂存身份转第二步输入动态码/恢复代码
 		if _user_has_2fa(user):
@@ -234,6 +235,44 @@ def _verify_captcha(request, captcha_value, captcha_key):
 		return True, None
 	except CaptchaStore.DoesNotExist:
 		return False, '验证码过期或无效'
+
+
+def verify_captcha(request):
+	"""AJAX 验码（登录页提交前预检）：只校验验证码。
+
+	- 对了：不删除，等登录提交时由 auth_login 二次验码并删除（保持一次性语义）。
+	- 错了：删除旧码 + 生成新码返回，前端替换验证码图片，不刷新页面。
+	"""
+	if request.method != 'POST':
+		return JsonResponse({'ok': False, 'error': 'METHOD_NOT_ALLOWED'}, status=405)
+
+	captcha_key = request.POST.get('captcha_key', '')
+	captcha_value = request.POST.get('captcha', '')
+
+	try:
+		captcha = CaptchaStore.objects.get(hashkey=captcha_key)
+	except CaptchaStore.DoesNotExist:
+		# 过期/无效：也换新码返回，前端替换图片
+		new_key = CaptchaStore.generate_key()
+		return JsonResponse({
+			'ok': False,
+			'msg': '验证码过期或无效',
+			'new_captcha_key': new_key,
+			'new_captcha_url': captcha_image_url(new_key),
+		})
+
+	if captcha.response.upper() != captcha_value.upper():
+		# 错了：删旧码 + 换新码，前端替换图片
+		captcha.delete()
+		new_key = CaptchaStore.generate_key()
+		return JsonResponse({
+			'ok': False,
+			'msg': '验证码错误',
+			'new_captcha_key': new_key,
+			'new_captcha_url': captcha_image_url(new_key),
+		})
+
+	return JsonResponse({'ok': True})
 
 
 def auth_register(request):

@@ -8,11 +8,11 @@
     <h1 class="h1-text">
         登录
     </h1>
-    <form action="" method="post" name="login_form" onsubmit="return validateForm()">
+    <form action="" method="post" name="login_form">
         {% csrf_token %}
         <input type="hidden" name="required">
         用户名或用户编号:
-        <input type="text" name="username" required>
+        <input type="text" name="username" value="{{ username }}" required>
         <br>
         密码:
         <input type="password" name="password" required>
@@ -22,7 +22,7 @@
         <br>
         图形验证码:
         <input type="text" id="captcha" name="captcha" required>
-        <img src="{{ captcha_image_url }}" alt="验证码">
+        <img src="{{ captcha_image_url }}" alt="验证码" id="captcha-img">
         <br>
         <input type="hidden" id="captcha_key" name="captcha_key" value="{{ captcha_key }}" autocomplete="off">
 
@@ -30,21 +30,74 @@
     </form>
     <p class="p-text">没有账号？<a class="a-text" href="{% url 'users:register' %}">立即注册</a></p>
     <script>
-        function validateForm()
-        {
-            var required=document.forms['login_form']['required'].value;
-            if(required&&required!='')
-                return false;
-            return true;
-        }
-        // 一键填充演示账号：只填用户名/密码，验证码仍需手动输入
         (function () {
+            var form = document.forms['login_form'];
+            if (!form) return;
+
+            // 一键填充演示账号：只填用户名/密码，验证码仍需手动输入
             var btn = document.getElementById('fill-demo');
             if (btn) {
                 btn.addEventListener('click', function () {
-                    document.forms['login_form']['username'].value = '{{ demo_username|escapejs }}';
-                    document.forms['login_form']['password'].value = '{{ demo_password|escapejs }}';
+                    form['username'].value = '{{ demo_username|escapejs }}';
+                    form['password'].value = '{{ demo_password|escapejs }}';
                 });
+            }
+
+            // 蜜罐检测：正常人不会填 hidden 字段，填了即为机器人
+            function isHoneypot() {
+                var required = form['required'];
+                return !!(required && required.value !== '');
+            }
+
+            // 提交前先 AJAX 验码：验证码错则换图 + 提示，不刷新页面，用户名/密码保留
+            form.addEventListener('submit', function (e) {
+                if (isHoneypot()) {  // 机器人：静默拦截
+                    e.preventDefault();
+                    return;
+                }
+                if (form.dataset.captchaVerified === '1') {  // 已验码通过，放行
+                    return;
+                }
+                e.preventDefault();
+                verifyCaptcha();
+            });
+
+            function verifyCaptcha() {
+                var csrfInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+                var captchaInput = document.getElementById('captcha');
+                var captchaKey = document.getElementById('captcha_key');
+                var captchaImg = document.getElementById('captcha-img');
+
+                var fd = new URLSearchParams();
+                fd.append('csrfmiddlewaretoken', csrfInput ? csrfInput.value : '');
+                fd.append('captcha_key', captchaKey.value);
+                fd.append('captcha', captchaInput.value);
+
+                fetch('/user/login/verify-captcha/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfInput ? csrfInput.value : ''
+                    },
+                    body: fd.toString()
+                }).then(function (r) { return r.json(); })
+                  .then(function (data) {
+                      if (data.ok) {
+                          form.dataset.captchaVerified = '1';
+                          form.submit();
+                      } else {
+                          captchaInput.value = '';
+                          if (data.new_captcha_key) {
+                              captchaKey.value = data.new_captcha_key;
+                              captchaImg.src = data.new_captcha_url;
+                          }
+                          captchaInput.focus();
+                          alert(data.msg || '验证码错误');
+                      }
+                  })
+                  .catch(function () {
+                      alert('网络错误，请重试');
+                  });
             }
         })();
     </script>

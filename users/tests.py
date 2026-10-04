@@ -102,6 +102,78 @@ class LoginPageDemoFillTests(TestCase):
         self.assertIn(settings.DEMO_ACCOUNT['password'], body)
 
 
+class VerifyCaptchaApiTests(TestCase):
+    """AJAX 验码接口：对了不删、错了删换新、过期换新、方法错误"""
+
+    def setUp(self):
+        from captcha.models import CaptchaStore
+        self.key = CaptchaStore.generate_key()
+        self.answer = CaptchaStore.objects.get(hashkey=self.key).response
+
+    def _post(self, key, value):
+        return self.client.post('/user/login/verify-captcha/',
+                                {'captcha_key': key, 'captcha': value})
+
+    def test_correct_keeps_captcha(self):
+        """验证码正确：返回 ok 且不删除（登录提交时再由 auth_login 二次验码删除）"""
+        from captcha.models import CaptchaStore
+        resp = self._post(self.key, self.answer)
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.json()['ok'])
+        self.assertTrue(CaptchaStore.objects.filter(hashkey=self.key).exists())
+
+    def test_wrong_deletes_and_returns_new(self):
+        """验证码错误：删旧码 + 返回新码，且旧码已删、新码存在"""
+        from captcha.models import CaptchaStore
+        resp = self._post(self.key, 'WRONG')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['msg'], '验证码错误')
+        self.assertFalse(CaptchaStore.objects.filter(hashkey=self.key).exists())
+        self.assertTrue(CaptchaStore.objects.filter(hashkey=data['new_captcha_key']).exists())
+
+    def test_expired_key_returns_new(self):
+        """验证码过期/无效：返回 ok=false + 新码供前端换图"""
+        from captcha.models import CaptchaStore
+        resp = self._post('nonexistent-key', 'WRONG')
+        self.assertEqual(resp.status_code, 200)
+        data = resp.json()
+        self.assertFalse(data['ok'])
+        self.assertEqual(data['msg'], '验证码过期或无效')
+        self.assertTrue(CaptchaStore.objects.filter(hashkey=data['new_captcha_key']).exists())
+
+    def test_get_not_allowed(self):
+        resp = self.client.get('/user/login/verify-captcha/')
+        self.assertEqual(resp.status_code, 405)
+
+
+class LoginUsernameRefillTests(TestCase):
+    """登录失败（账密错）时回填用户名，密码/验证码清空"""
+
+    def setUp(self):
+        self.user = User.objects.create_user(username='refill_user', password='right-pass-123')
+
+    def _login(self, username, password):
+        from captcha.models import CaptchaStore
+        key = CaptchaStore.generate_key()
+        answer = CaptchaStore.objects.get(hashkey=key).response
+        return self.client.post('/user/login/', {
+            'username': username,
+            'password': password,
+            'captcha_key': key,
+            'captcha': answer,
+        })
+
+    def test_wrong_password_refills_username(self):
+        resp = self._login('refill_user', 'wrong-pass')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        self.assertIn('用户名或密码错误', body)
+        # 用户名回填到 input value，密码不回填
+        self.assertIn('value="refill_user"', body)
+
+
 class RequestBlockingHeaderTests(TestCase):
     """缺头检测：Accept 与 Accept-Language 缺一即拦（不能依赖 Connection，平台会注入）"""
 
