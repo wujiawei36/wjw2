@@ -68,7 +68,7 @@ class PageVisitMiddlewareTests(TestCase):
         )
 
     def test_excluded_paths_not_recorded(self):
-        for url in ['/static/anything.css', '/admin/login/', '/panel/', '/captcha/refresh/']:
+        for url in ['/static/anything.css', '/admin/login/', '/panel/', '/captcha/refresh/', '/health/']:
             self.client.get(url)
         self.assertFalse(PageVisit.objects.filter(pk=1).exists())
 
@@ -203,6 +203,16 @@ class RequestBlockingHeaderTests(TestCase):
                      HTTP_ACCEPT_LANGUAGE='zh-CN,zh;q=0.9')
         resp = self._middleware().process_request(req)
         self.assertIsNone(resp, '浏览器请求不应被拦截')
+
+    def test_health_check_exempt_from_crawler_block(self):
+        """健康检查端点：脚本 UA + 缺头也应放行（跳过爬虫检测，仍保留限流）"""
+        rf = RequestFactory()
+        # curl UA 会命中 UA 黑名单，且缺 Accept/Accept-Language 会命中缺头拦截；
+        # 但 /health 属于 skip_crawler 白名单，应直接放行
+        req = rf.get('/health/', REMOTE_ADDR='8.8.8.8',
+                     HTTP_USER_AGENT='curl/7.79.1')
+        resp = self._middleware().process_request(req)
+        self.assertIsNone(resp, '健康检查端点应跳过爬虫检测直接放行')
 
 
 

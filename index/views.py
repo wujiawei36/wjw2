@@ -43,6 +43,7 @@ def robots(request):
         'Disallow: /captcha/\n'
         'Disallow: /hijack/\n'
         'Disallow: /tools/api/\n'
+        'Disallow: /health/\n'
         '\n'
         'Allow: /\n'
     )
@@ -50,3 +51,13 @@ def robots(request):
 
 def about(request):
     return render(request,'index/about.html')
+
+
+def health(request):
+    """健康检查端点：供脚本/监控探针探测站点是否存活，仅返回 200。
+
+    说明：uptime 监控、拨测脚本通常不带浏览器请求头（无 Accept/Accept-Language、
+    UA 为 curl/python-requests 等），因此在中间件层跳过爬虫检测，但仍保留
+    频率限流，防止被刷爆。
+    """
+    return HttpResponse('ok', content_type='text/plain; charset=utf-8')
