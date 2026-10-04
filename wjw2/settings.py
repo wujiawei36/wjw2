@@ -227,6 +227,13 @@ CAPTCHA_FOREGROUND_COLOR = '#000000'
 
 SITE_NAME = 'wujiawei的网站'
 
+# 演示账号（登录页「一键填充」按钮用）。密码为弱密码、公开可见，供访客体验站点。
+# username 与 users/views.py 的 DEMO_ACCOUNT_USERNAMES 保持一致（guest）。
+DEMO_ACCOUNT = {
+    'username': 'guest',
+    'password': '123456',
+}
+
 LOGIN_URL='/user/login'
 
 # 两步验证（TOTP）签发者，出现在验证器 App 里显示的账号名中

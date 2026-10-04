@@ -50,7 +50,13 @@ def demo_account_forbidden(view_func):
 def get_captchas():
 	new_captcha_key = CaptchaStore.generate_key()
 	captcha_image_url_str = captcha_image_url(new_captcha_key)
-	return {'captcha_image_url': captcha_image_url_str, 'captcha_key': new_captcha_key}
+	demo = getattr(settings, 'DEMO_ACCOUNT', {})
+	return {
+		'captcha_image_url': captcha_image_url_str,
+		'captcha_key': new_captcha_key,
+		'demo_username': demo.get('username', ''),
+		'demo_password': demo.get('password', ''),
+	}
 
 def _resolve_username(raw):
 	"""

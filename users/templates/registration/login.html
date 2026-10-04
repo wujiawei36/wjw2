@@ -18,6 +18,8 @@
         <input type="password" name="password" required>
 
         <br>
+        <button type="button" id="fill-demo">一键填充演示账号</button>
+        <br>
         图形验证码:
         <input type="text" id="captcha" name="captcha" required>
         <img src="{{ captcha_image_url }}" alt="验证码">
@@ -35,6 +37,16 @@
                 return false;
             return true;
         }
+        // 一键填充演示账号：只填用户名/密码，验证码仍需手动输入
+        (function () {
+            var btn = document.getElementById('fill-demo');
+            if (btn) {
+                btn.addEventListener('click', function () {
+                    document.forms['login_form']['username'].value = '{{ demo_username|escapejs }}';
+                    document.forms['login_form']['password'].value = '{{ demo_password|escapejs }}';
+                });
+            }
+        })();
     </script>
     {% if errors %}
         <p class="p-text">

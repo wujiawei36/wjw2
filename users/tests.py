@@ -87,6 +87,21 @@ class PageVisitMiddlewareTests(TestCase):
         self.assertEqual(c.total_count, 4)
 
 
+class LoginPageDemoFillTests(TestCase):
+    """登录页「一键填充演示账号」：渲染 demo 用户名/密码，验证码仍由用户手输"""
+
+    def test_login_page_renders_demo_fill(self):
+        from django.conf import settings
+        resp = self.client.get('/user/login/')
+        self.assertEqual(resp.status_code, 200)
+        body = resp.content.decode()
+        # 按钮文案存在
+        self.assertIn('一键填充演示账号', body)
+        # demo 账号信息来自 settings.DEMO_ACCOUNT，注入到前端填充逻辑
+        self.assertIn(settings.DEMO_ACCOUNT['username'], body)
+        self.assertIn(settings.DEMO_ACCOUNT['password'], body)
+
+
 class RequestBlockingHeaderTests(TestCase):
     """缺头检测：Accept 与 Accept-Language 缺一即拦（不能依赖 Connection，平台会注入）"""
 
