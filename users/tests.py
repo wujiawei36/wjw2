@@ -215,6 +215,62 @@ class RequestBlockingHeaderTests(TestCase):
         self.assertIsNone(resp, '健康检查端点应跳过爬虫检测直接放行')
 
 
+class CloudflareScannerTests(TestCase):
+    """Cloudflare 扫描器双重验证：UA + IP 同时满足才放行（跳过爬虫检测）"""
+
+    CF_IP = '104.16.1.1'      # 属于 104.16.0.0/13
+    NON_CF_IP = '8.8.8.8'
+
+    def _middleware(self):
+        from users.middleware import RequestBlockingMiddleware
+        return RequestBlockingMiddleware(lambda r: None)
+
+    def test_is_cloudflare_ip(self):
+        from utils.cloudflare import is_cloudflare_ip
+        self.assertTrue(is_cloudflare_ip(self.CF_IP))
+        self.assertFalse(is_cloudflare_ip(self.NON_CF_IP))
+        self.assertFalse(is_cloudflare_ip(''))
+        self.assertFalse(is_cloudflare_ip('not-an-ip'))
+
+    def test_is_cloudflare_scanner_ua(self):
+        from utils.cloudflare import is_cloudflare_scanner_ua
+        self.assertTrue(is_cloudflare_scanner_ua('url-checker/1.0'))
+        self.assertTrue(is_cloudflare_scanner_ua('Cloudflare-Radar-Scanner/1.0'))
+        self.assertFalse(is_cloudflare_scanner_ua('curl/7.79.1'))
+        self.assertFalse(is_cloudflare_scanner_ua(''))
+
+    def test_trusted_scanner_requires_both(self):
+        from utils.cloudflare import is_trusted_cloudflare_scanner
+        self.assertTrue(is_trusted_cloudflare_scanner(self.CF_IP, 'url-checker/1.0'))
+        self.assertFalse(is_trusted_cloudflare_scanner(self.NON_CF_IP, 'url-checker/1.0'))
+        self.assertFalse(is_trusted_cloudflare_scanner(self.CF_IP, 'curl/7.79.1'))
+
+    def test_cloudflare_scanner_missing_headers_passes(self):
+        """CF IP + CF UA + 缺头 → 放行"""
+        rf = RequestFactory()
+        req = rf.get('/about/', REMOTE_ADDR=self.CF_IP,
+                     HTTP_USER_AGENT='url-checker/1.0')  # 缺 Accept/Accept-Language
+        resp = self._middleware().process_request(req)
+        self.assertIsNone(resp, 'Cloudflare 扫描器应跳过缺头拦截放行')
+
+    def test_cloudflare_ip_with_non_scanner_ua_blocked(self):
+        """CF IP + 非扫描器 UA + 缺头 → 拦截（不能单靠 IP 放行）"""
+        rf = RequestFactory()
+        req = rf.get('/about/', REMOTE_ADDR=self.CF_IP,
+                     HTTP_USER_AGENT='curl/7.79.1')
+        resp = self._middleware().process_request(req)
+        self.assertIsNotNone(resp, 'CF IP 但非扫描器 UA 不应被放行')
+        self.assertEqual(resp.status_code, 403)
+
+    def test_non_cloudflare_ip_with_scanner_ua_blocked(self):
+        """非 CF IP + 扫描器 UA + 缺头 → 拦截（不能单靠 UA 放行）"""
+        rf = RequestFactory()
+        req = rf.get('/about/', REMOTE_ADDR=self.NON_CF_IP,
+                     HTTP_USER_AGENT='url-checker/1.0')
+        resp = self._middleware().process_request(req)
+        self.assertIsNotNone(resp, '非 CF IP 即使伪造扫描器 UA 也不应被放行')
+        self.assertEqual(resp.status_code, 403)
+
 
 class SessionAdminLeakTests(TestCase):
     """会话管理页绝不能泄露完整 session key（防会话劫持）"""

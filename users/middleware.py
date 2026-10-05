@@ -3,6 +3,7 @@ from django.utils.deprecation import MiddlewareMixin
 from django.utils import timezone
 from datetime import timedelta
 from utils.get_ip import get_ip
+from utils.cloudflare import is_trusted_cloudflare_scanner
 from .models import Ban_IP
 import threading
 import logging
@@ -172,11 +173,13 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 
 		# ==================== 爬虫检测 ====================
 		user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
-		# 以下路径跳过爬虫检测（UA 黑名单 / 缺头拦截 / 无头浏览器），但仍保留
+		# 以下请求跳过爬虫检测（UA 黑名单 / 缺头拦截 / 无头浏览器），但仍保留
 		# 下方频率限流，防止后端被刷爆：
 		#   - /tools/api/ ：以 API Key 鉴权，浏览器头不作为身份依据
 		#   - /health     ：健康检查端点，供脚本/监控探针探测存活（只需 200）
-		skip_crawler = request.path_info.startswith(('/tools/api/', '/health'))
+		#   - Cloudflare 安全扫描器：UA + IP 双重验证后放行（见 utils/cloudflare.py）
+		skip_crawler = request.path_info.startswith(('/tools/api/', '/health')) \
+			or is_trusted_cloudflare_scanner(ip, user_agent)
 		
 		# 1. 基础爬虫检测：检查常见爬虫User-Agent
 		if not skip_crawler and (not user_agent or any(bot in user_agent for bot in [
