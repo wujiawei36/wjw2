@@ -27,3 +27,20 @@ class HealthCheckTests(TestCase):
     def test_health_no_slash_returns_200(self):
         resp = self.client.get('/health')
         self.assertEqual(resp.status_code, 200)
+
+
+class BingSiteVerificationTests(TestCase):
+    """Bing 站点验证：base 模板 <head> 内需输出 msvalidate.01 验证标签"""
+
+    MSVALIDATE = '56766775C86C2F37399F4EAC70D01E5A'
+
+    def test_meta_tag_on_homepage(self):
+        body = self.client.get('/').content.decode()
+        self.assertIn(
+            f'<meta name="msvalidate.01" content="{self.MSVALIDATE}">', body)
+
+    def test_meta_tag_on_all_pages(self):
+        """验证标签位于 base 模板 head，所有继承页面都应带上"""
+        for url in ['/', '/about/']:
+            body = self.client.get(url).content.decode()
+            self.assertIn(self.MSVALIDATE, body, f'{url} 缺少 Bing 验证标签')
