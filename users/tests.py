@@ -215,6 +215,66 @@ class RequestBlockingHeaderTests(TestCase):
         self.assertIsNone(resp, '健康检查端点应跳过爬虫检测直接放行')
 
 
+class SearchEngineBotTests(TestCase):
+    """搜索引擎爬虫放行：bingbot/googlebot 不应被 UA 黑名单的 'bot' 关键字误伤"""
+
+    BINGBOT_UA = 'Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)'
+    GOOGLEBOT_UA = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+
+    def _middleware(self):
+        from users.middleware import RequestBlockingMiddleware
+        return RequestBlockingMiddleware(lambda r: None)
+
+    def test_is_search_engine_bot(self):
+        from utils.search_bots import is_search_engine_bot
+        self.assertTrue(is_search_engine_bot(self.BINGBOT_UA))
+        self.assertTrue(is_search_engine_bot(self.GOOGLEBOT_UA))
+        self.assertTrue(is_search_engine_bot('Mozilla/5.0 (compatible; Baiduspider/2.0)'))
+        self.assertFalse(is_search_engine_bot('Mozilla/5.0 Chrome/120.0'))
+        self.assertFalse(is_search_engine_bot(''))
+        self.assertFalse(is_search_engine_bot(None))
+
+    def test_bingbot_passes_without_accept_language(self):
+        """Bingbot 可能不带 Accept-Language，放行后应返回 None（不拦截）"""
+        from django.test import RequestFactory
+        req = RequestFactory().get(
+            '/', REMOTE_ADDR='157.55.39.1',
+            HTTP_USER_AGENT=self.BINGBOT_UA,
+            HTTP_ACCEPT='*/*')
+        self.assertIsNone(self._middleware().process_request(req))
+
+    def test_googlebot_passes(self):
+        from django.test import RequestFactory
+        req = RequestFactory().get(
+            '/', REMOTE_ADDR='66.249.66.1',
+            HTTP_USER_AGENT=self.GOOGLEBOT_UA,
+            HTTP_ACCEPT='*/*')
+        self.assertIsNone(self._middleware().process_request(req))
+
+    def test_generic_bot_still_blocked(self):
+        """非白名单爬虫（UA 含 bot）仍应被 UA 黑名单拦截"""
+        from django.test import RequestFactory
+        req = RequestFactory().get(
+            '/', REMOTE_ADDR='8.8.8.8',
+            HTTP_USER_AGENT='Mozilla/5.0 (compatible; SomeScraperBot/1.0)',
+            HTTP_ACCEPT='*/*',
+            HTTP_ACCEPT_LANGUAGE='en-US')
+        resp = self._middleware().process_request(req)
+        self.assertIsNotNone(resp)
+        self.assertEqual(resp.status_code, 403)
+
+    def test_headless_still_blocked(self):
+        from django.test import RequestFactory
+        req = RequestFactory().get(
+            '/', REMOTE_ADDR='8.8.8.8',
+            HTTP_USER_AGENT='Mozilla/5.0 HeadlessChrome/120.0',
+            HTTP_ACCEPT='*/*',
+            HTTP_ACCEPT_LANGUAGE='en-US')
+        resp = self._middleware().process_request(req)
+        self.assertIsNotNone(resp)
+        self.assertEqual(resp.status_code, 403)
+
+
 class CloudflareScannerTests(TestCase):
     """Cloudflare 扫描器双重验证：UA + IP 同时满足才放行（跳过爬虫检测）"""
 

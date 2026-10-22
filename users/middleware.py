@@ -4,6 +4,7 @@ from django.utils import timezone
 from datetime import timedelta
 from utils.get_ip import get_ip
 from utils.cloudflare import is_trusted_cloudflare_scanner
+from utils.search_bots import is_search_engine_bot
 from .models import Ban_IP
 import threading
 import logging
@@ -178,8 +179,11 @@ class RequestBlockingMiddleware(MiddlewareMixin):
 		#   - /tools/api/ ：以 API Key 鉴权，浏览器头不作为身份依据
 		#   - /health     ：健康检查端点，供脚本/监控探针探测存活（只需 200）
 		#   - Cloudflare 安全扫描器：UA + IP 双重验证后放行（见 utils/cloudflare.py）
+		#   - 搜索引擎爬虫：bingbot / googlebot 等官方 UA（见 utils/search_bots.py），
+		#     否则会被 UA 黑名单的 'bot' 关键字误伤，导致站点无法被收录
 		skip_crawler = request.path_info.startswith(('/tools/api/', '/health')) \
-			or is_trusted_cloudflare_scanner(ip, user_agent)
+			or is_trusted_cloudflare_scanner(ip, user_agent) \
+			or is_search_engine_bot(user_agent)
 		
 		# 1. 基础爬虫检测：检查常见爬虫User-Agent
 		if not skip_crawler and (not user_agent or any(bot in user_agent for bot in [
